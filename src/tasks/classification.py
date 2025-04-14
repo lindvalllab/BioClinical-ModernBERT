@@ -39,8 +39,7 @@ class ClassificationTrainer():
         training_args = TrainingArguments(
             output_dir="./results",
             evaluation_strategy="epoch",
-            per_device_train_batch_size=16,
-            per_device_eval_batch_size=16,
+            save_strategy="epoch",
             logging_steps=10,
             load_best_model_at_end=True,
             metric_for_best_model="weighted_f1",

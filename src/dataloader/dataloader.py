@@ -33,22 +33,18 @@ class HOC:
         return ds_processed
 
     def convert_labels(self, batch):
-        # batch["label"] is a list of lists, one per example.
         new_labels = []
         for label_list in batch["label"]:
-            # If "none" (7) is present, set the labels to an empty multi-hot vector:
             if 7 in label_list:
-                new_labels.append([0] * self.num_labels)
+                # Create a vector of zeros, and cast each element to float
+                new_labels.append([0.0] * self.num_labels)
             else:
-                binary_vector = [0] * self.num_labels
+                binary_vector = [0.0] * self.num_labels  # start with float zeros
                 for lab in label_list:
-                    # For labs before 7, use them as is.
                     if lab < 7:
-                        binary_vector[lab] = 1
-                    # For labs after 7, subtract 1 because the "none" slot is removed.
+                        binary_vector[lab] = 1.0
                     elif lab > 7:
-                        binary_vector[lab - 1] = 1
+                        binary_vector[lab - 1] = 1.0
                 new_labels.append(binary_vector)
-        # Save the new multi-label encoding in a column named "labels"
         batch["labels"] = new_labels
         return batch

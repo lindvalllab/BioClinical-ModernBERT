@@ -2,10 +2,10 @@ import argparse
 import os
 import torch
 import time
+from transformers import set_seed
 
 from src.dataloader.dataloader import get_data
 from src.tasks.classification import ClassificationTrainer
-
 
 def get_device():
     if torch.cuda.is_available():
@@ -17,19 +17,28 @@ def get_device():
     return device
 
 def main(args):
+    # Set the seed before proceeding.
+    set_seed(args.seed)
+    
     device = get_device()
     print(f"Using device: {device}")
 
     data_wrapper = get_data(args.dataset)
 
-    # Prepare hyperparameters in a dictionary
+    # Prepare hyperparameters in a dictionary.
     training_args = {
         "learning_rate": args.lr,
         "num_train_epochs": args.epochs,
-        "weight_decay": args.wd
+        "weight_decay": args.wd,
+        "per_device_train_batch_size": args.batch_size,
+        "per_device_eval_batch_size": args.batch_size,
+        "gradient_accumulation_steps": args.accumulation_steps
     }
 
-    # Initialize the classification trainer
+    # Calculate the effective batch size
+    effective_batch_size = args.batch_size * args.accumulation_steps
+    print(f"Effective batch size: {effective_batch_size}")
+
     if "classification" in data_wrapper.problem_type:
         trainer_obj = ClassificationTrainer(device, args.model, data_wrapper, training_args)
     else:
@@ -56,10 +65,10 @@ def main(args):
     output_dir = f"outputs/{args.dataset}/{model_name}"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Log output file name (include learning rate, weight decay, etc.)
+    # Log output file name (include learning rate, weight decay, effective batch size, etc.)
     output_file = os.path.join(
         output_dir,
-        f"lr={args.lr}_wd={args.wd}_epochs={args.epochs}.txt"
+        f"lr={args.lr}_wd={args.wd}_epochs={args.epochs}_seed={args.seed}_effective_batch_size={effective_batch_size}.txt"
     )
 
     # Write the results and timing to the log file.
@@ -67,11 +76,12 @@ def main(args):
         f.write("Test evaluation results:\n")
         for key, value in trainer_obj.test_results.items():
             f.write(f"{key}: {value}\n")
-        f.write(f"\nTraining duration (seconds): {train_duration:.2f}\n")
+        f.write(f"\nSeed: {args.seed}\n")
+        f.write(f"Effective batch size: {effective_batch_size}\n")
+        f.write(f"Training duration (seconds): {train_duration:.2f}\n")
         f.write(f"Evaluation duration (seconds): {eval_duration:.2f}\n")
 
     print(f"Test results and timings logged to {output_file}")
-    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script to evaluate encoders on downstream tasks.")
@@ -80,5 +90,8 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=2e-5, help="Learning rate for training")
     parser.add_argument("--wd", type=float, default=0.01, help="Weight decay for training")
     parser.add_argument("--epochs", type=int, default=3, help="Number of training epochs")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size per device for training and evaluation")
+    parser.add_argument("--accumulation_steps", type=int, default=1, help="Gradient accumulation steps")
     args = parser.parse_args()
     main(args)
