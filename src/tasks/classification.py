@@ -7,12 +7,13 @@ from transformers import (
 from src.metrics.metrics import compute_metrics_multi_label_classification
 
 class ClassificationTrainer():
-    def __init__(self, device, model, data_wrapper, training_args):
+    def __init__(self, device, model, data_wrapper, training_args, checkpoint_dir):
         self.device = device
         self.model_checkpoint = model
         self.ds = data_wrapper.dataset
         self.problem_type = data_wrapper.problem_type
         self.training_args = training_args
+        self.checkpoint_dir = checkpoint_dir
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint)
         self.model = AutoModelForSequenceClassification.from_pretrained(
             self.model_checkpoint,
@@ -37,7 +38,7 @@ class ClassificationTrainer():
 
     def train(self):
         training_args = TrainingArguments(
-            output_dir="./results",
+            output_dir=self.checkpoint_dir,
             evaluation_strategy="epoch",
             save_strategy="epoch",
             logging_steps=10,
