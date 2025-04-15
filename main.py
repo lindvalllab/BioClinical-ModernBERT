@@ -7,6 +7,8 @@ from transformers import set_seed
 from src.dataloader.dataloader import get_data
 from src.tasks.classification import ClassificationTrainer
 
+project_root = os.path.dirname(os.path.abspath(__file__))
+
 def get_device():
     if torch.cuda.is_available():
         return torch.device("cuda")
@@ -46,12 +48,12 @@ def main(args):
     
     # Create log file path.
     model_name = args.model.split("/")[-1]
-    log_output_dir = os.path.join("outputs", args.dataset, model_name)
+    log_output_dir = os.path.join(project_root, "outputs", args.dataset, model_name)
     os.makedirs(log_output_dir, exist_ok=True)
     log_file = os.path.join(log_output_dir, base_name + ".txt")
     
     # Create checkpoint directory path.
-    checkpoint_dir = os.path.join("checkpoints", args.dataset, model_name, base_name)
+    checkpoint_dir = os.path.join(project_root, "checkpoints", args.dataset, model_name, base_name)
     os.makedirs(checkpoint_dir, exist_ok=True)
     print(f"Checkpoints will be saved in: {checkpoint_dir}")
     
@@ -79,13 +81,31 @@ def main(args):
     
     print("Test set evaluation:", trainer_obj.test_results)
     
-    # Log output: save evaluation results and timing information.
+    # Determine the best epoch from trainer's log history.
+    best_epoch = None
+    best_metric = None
+    for log in trainer_obj.trainer.state.log_history:
+        # Only look at evaluation logs (which include an 'epoch' key and your metric key).
+        if "epoch" in log and "eval_weighted_f1" in log:
+            # If no best_metric set yet, or this eval is better, update best_epoch.
+            if best_metric is None or log["eval_weighted_f1"] > best_metric:
+                best_metric = log["eval_weighted_f1"]
+                best_epoch = log["epoch"]
+    
+    if best_epoch is not None:
+        print(f"Best epoch: {best_epoch}")
+    else:
+        print("Best epoch could not be determined from the log history.")
+    
+    # Log output: save evaluation results, best epoch, and timing information.
     with open(log_file, "w") as f:
         f.write("Test evaluation results:\n")
         for key, value in trainer_obj.test_results.items():
             f.write(f"{key}: {value}\n")
         f.write(f"\nSeed: {args.seed}\n")
         f.write(f"Effective batch size: {effective_batch_size}\n")
+        if best_epoch is not None:
+            f.write(f"Best epoch selected: {best_epoch}\n")
         f.write(f"Training duration (seconds): {train_duration:.2f}\n")
         f.write(f"Evaluation duration (seconds): {eval_duration:.2f}\n")
     

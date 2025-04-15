@@ -39,12 +39,13 @@ class ClassificationTrainer():
     def train(self):
         training_args = TrainingArguments(
             output_dir=self.checkpoint_dir,
-            evaluation_strategy="epoch",
+            eval_strategy="epoch",
             save_strategy="epoch",
             logging_steps=10,
             load_best_model_at_end=True,
             metric_for_best_model="weighted_f1",
             save_total_limit=1,
+            report_to="none",
             **self.training_args
         )
         self.trainer = Trainer(
