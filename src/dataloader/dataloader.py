@@ -1,6 +1,10 @@
 import os
 import pandas as pd
+from pathlib import Path
 from datasets import load_dataset, Dataset, DatasetDict
+
+HERE = Path(__file__).resolve().parent        # .../project/src/dataloader
+PROJECT_ROOT = HERE.parent.parent             # .../project
 
 def get_data(name):
     if name == "HOC":
@@ -102,7 +106,7 @@ class Phenotype:
         ]
         self.num_labels = len(self.class_names)
         self.problem_type = "multi_label_classification"
-        self.cache_dir = os.path.join("../../data/processed/phenotype")
+        self.cache_dir = os.path.join(f"{PROJECT_ROOT}/data/processed/phenotype")
         self.dataset = self.preprocess_data()
 
     def preprocess_data(self):
@@ -110,8 +114,8 @@ class Phenotype:
         if os.path.isdir(self.cache_dir):
             return DatasetDict.load_from_disk(self.cache_dir)
         # 1) Load the annotation and notes CSVs
-        df_ann = pd.read_csv("../../data/raw/phenotype/ACTdb102003.csv")
-        df_mimic = pd.read_csv("../../data/raw/phenotype/NOTEEVENTS.csv")
+        df_ann = pd.read_csv(f"{PROJECT_ROOT}/data/raw/phenotype/ACTdb102003.csv")
+        df_mimic = pd.read_csv(f"{PROJECT_ROOT}/data/raw/phenotype/NOTEEVENTS.csv")
 
         # 2) Filter out inconsistent rows (NONE=1 & any phenotype=1)
         mask = ~((df_ann['NONE'] == 1) & (df_ann[self.class_names].sum(axis=1) > 0))
@@ -154,8 +158,9 @@ class Phenotype:
         return dataset_dict
     
     def make_multi_hot(self, row):
-            # if NONE=1, then no phenotype => all zeros
-            if row['NONE'] == 1:
-                return [0] * self.num_labels
-            else:
-                return row[self.class_names].astype(int).tolist()
+        # if NONE=1, then no phenotype => all zeros
+        if row['NONE'] == 1:
+            return [0.0] * self.num_labels
+        else:
+            # cast each entry to float
+            return [float(x) for x in row[self.class_names].tolist()]
