@@ -7,6 +7,8 @@ def get_data(name):
         return HOC()
     elif name == "MedQA":
         return MedQA()
+    elif name == "Phenotype":
+        return Phenotype()
     else:
         raise NotImplementedError(f"Dataset {name} not implemented.")
 
