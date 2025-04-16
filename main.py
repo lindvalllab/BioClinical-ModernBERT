@@ -4,6 +4,8 @@ import torch
 import time
 from transformers import set_seed
 
+torch.set_float32_matmul_precision('high')
+
 from src.dataloader.dataloader import get_data
 from src.tasks.classification import ClassificationTrainer
 

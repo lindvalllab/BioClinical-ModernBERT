@@ -4,7 +4,7 @@ from transformers import (
     Trainer,
     TrainingArguments
 )
-from src.metrics.metrics import compute_metrics_multi_label_classification
+from src.metrics.metrics import compute_metrics_multi_label_classification, compute_metrics_single_label_classification
 
 class ClassificationTrainer():
     def __init__(self, device, model, data_wrapper, training_args, checkpoint_dir):
@@ -14,7 +14,7 @@ class ClassificationTrainer():
         self.problem_type = data_wrapper.problem_type
         self.training_args = training_args
         self.checkpoint_dir = checkpoint_dir
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint, add_prefix_space=True)
         self.model = AutoModelForSequenceClassification.from_pretrained(
             self.model_checkpoint,
             num_labels=data_wrapper.num_labels,
@@ -33,6 +33,8 @@ class ClassificationTrainer():
     def get_compute_metrics(self):
         if self.problem_type == "multi_label_classification":
             return compute_metrics_multi_label_classification
+        elif self.problem_type == "single_label_classification":
+            return compute_metrics_single_label_classification
         else:
             raise NotImplementedError(f"No compute metrics function for {self.problem_type} has been implemented")
 

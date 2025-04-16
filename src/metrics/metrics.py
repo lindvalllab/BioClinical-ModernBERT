@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, f1_score
 
 def compute_metrics_multi_label_classification(eval_pred):
     """
@@ -16,3 +16,22 @@ def compute_metrics_multi_label_classification(eval_pred):
     micro_f1 = f1_score(labels, preds, average="micro", zero_division=0)
     
     return {"weighted_f1": weighted_f1, "micro_f1": micro_f1}
+
+
+def compute_metrics_single_label_classification(eval_pred):
+    """
+    Compute evaluation metrics for single-label classification.
+    
+    Given eval_pred as a tuple (logits, labels) where:
+       - logits: a numpy array of shape (batch_size, num_labels)
+       - labels: a numpy array of shape (batch_size)
+       
+    This function computes predictions by taking the argmax of the logits along the labels axis.
+    It then calculates accuracy and F1 scores (both weighted and micro) using scikit‑learn.
+    """
+    logits, labels = eval_pred
+    preds = np.argmax(logits, axis=-1)
+    accuracy = accuracy_score(labels, preds)
+    weighted_f1 = f1_score(labels, preds, average="weighted", zero_division=0)
+    micro_f1 = f1_score(labels, preds, average="micro", zero_division=0)
+    return {"accuracy": accuracy, "weighted_f1": weighted_f1, "micro_f1": micro_f1}
