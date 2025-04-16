@@ -84,7 +84,7 @@ class MedQA:
         # Map the answer (a letter) to a label (0=A, 1=B, 2=C, 3=D)
         mapping = {"A": 0, "B": 1, "C": 2, "D": 3}
         label = mapping[example["answer_idx"]]
-        return {"text": text, "label": label}
+        return {"text": text, "labels": label}
     
 
 class Phenotype:

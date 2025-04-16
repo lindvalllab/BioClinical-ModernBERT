@@ -2,7 +2,8 @@ from transformers import (
     AutoTokenizer,
     AutoModelForSequenceClassification,
     Trainer,
-    TrainingArguments
+    TrainingArguments,
+    DataCollatorWithPadding
 )
 from src.metrics.metrics import compute_metrics_multi_label_classification, compute_metrics_single_label_classification
 
@@ -24,12 +25,13 @@ class SequenceClassificationTrainer():
         self.model.to(self.device)
         # fix for emilyalsentzer/Bio_ClinicalBERT
         self.max_length = self.tokenizer.model_max_length if self.tokenizer.model_max_length < 10000 else 512
-        self.ds = self.ds.map(self.tokenize, batched=True)
+        self.ds = self.ds.map(self.tokenize, batched=True, remove_columns=["text"])
+        self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
         self.trainer = None
         self.test_results = None
     
     def tokenize(self, batch):
-        return self.tokenizer(batch["text"], padding="max_length", truncation=True, max_length=self.max_length)
+        return self.tokenizer(batch["text"], truncation=True, max_length=self.max_length)
     
     def get_compute_metrics(self):
         if self.problem_type == "multi_label_classification":
@@ -56,6 +58,8 @@ class SequenceClassificationTrainer():
             args=training_args,
             train_dataset=self.ds["train"],
             eval_dataset=self.ds["validation"],
+            data_collator=self.data_collator,
+            tokenizer=self.tokenizer,
             compute_metrics=self.get_compute_metrics(),
         )
         self.trainer.train()
