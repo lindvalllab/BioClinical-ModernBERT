@@ -7,7 +7,7 @@ from transformers import set_seed
 torch.set_float32_matmul_precision('high')
 
 from src.dataloader.dataloader import get_data
-from src.tasks.classification import ClassificationTrainer
+from src.tasks.sequence_classification import SequenceClassificationTrainer
 
 project_root = os.path.dirname(os.path.abspath(__file__))
 
@@ -61,7 +61,7 @@ def main(args):
     
     # Initialize the correct trainer based on the problem type.
     if "classification" in data_wrapper.problem_type:
-        trainer_obj = ClassificationTrainer(
+        trainer_obj = SequenceClassificationTrainer(
             device, args.model, data_wrapper, training_args, checkpoint_dir
         )
     else:

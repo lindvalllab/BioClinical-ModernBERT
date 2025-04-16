@@ -6,14 +6,15 @@ from transformers import (
 )
 from src.metrics.metrics import compute_metrics_multi_label_classification, compute_metrics_single_label_classification
 
-class ClassificationTrainer():
-    def __init__(self, device, model, data_wrapper, training_args, checkpoint_dir):
+class SequenceClassificationTrainer():
+    def __init__(self, device, model_checkpoint, data_wrapper, training_args, checkpoint_dir):
         self.device = device
-        self.model_checkpoint = model
+        self.model_checkpoint = model_checkpoint
         self.ds = data_wrapper.dataset
         self.problem_type = data_wrapper.problem_type
         self.training_args = training_args
         self.checkpoint_dir = checkpoint_dir
+
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint, add_prefix_space=True)
         self.model = AutoModelForSequenceClassification.from_pretrained(
             self.model_checkpoint,
@@ -21,9 +22,9 @@ class ClassificationTrainer():
             problem_type=self.problem_type
         )
         self.model.to(self.device)
-        self.max_length = self.tokenizer.model_max_length
+        # fix for emilyalsentzer/Bio_ClinicalBERT
+        self.max_length = self.tokenizer.model_max_length if self.tokenizer.model_max_length < 10000 else 512
         self.ds = self.ds.map(self.tokenize, batched=True)
-        self.compute_metrics = None
         self.trainer = None
         self.test_results = None
     
