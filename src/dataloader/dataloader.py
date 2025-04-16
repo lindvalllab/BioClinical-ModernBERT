@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from datasets import load_dataset, Dataset, DatasetDict
 
@@ -89,74 +90,70 @@ class MedQA:
 
 class Phenotype:
     def __init__(self):
-        # List of phenotype columns (excluding 'NONE')
-        self.phenotype_cols = [
+        # The phenotype columns (exclude the "NONE" column as it only indicates "no phenotype")
+        self.class_names = [
             'ADVANCED.CANCER', 'ADVANCED.HEART.DISEASE', 'ADVANCED.LUNG.DISEASE',
             'ALCOHOL.ABUSE', 'CHRONIC.NEUROLOGICAL.DYSTROPHIES', 'CHRONIC.PAIN.FIBROMYALGIA',
             'DEMENTIA', 'DEPRESSION', 'DEVELOPMENTAL.DELAY.RETARDATION', 'NON.ADHERENCE',
             'OBESITY', 'OTHER.SUBSTANCE.ABUSE',
             'SCHIZOPHRENIA.AND.OTHER.PSYCHIATRIC.DISORDERS', 'UNSURE'
         ]
-        # The full list of columns including "NONE"
-        self.all_phenotype_cols = self.phenotype_cols + ["NONE"]
-        self.num_labels = len(self.all_phenotype_cols)
+        self.num_labels = len(self.class_names)
         self.problem_type = "multi_label_classification"
+        self.cache_dir = os.path.join("../../data/processed/phenotype")
         self.dataset = self.preprocess_data()
 
     def preprocess_data(self):
-        # Load the annotation CSV and the corresponding notes CSV from local files.
-        df_ann = pd.read_csv("../../data/phenotype/ACTdb102003.csv")
-        df_mimic = pd.read_csv("../../data/phenotype/NOTEEVENTS.csv")
-        
-        # Filter out rows where 'NONE' is 1 but there are other phenotype flags active.
-        valid_rows_mask = ~((df_ann['NONE'] == 1) & (df_ann[self.phenotype_cols].sum(axis=1) > 0))
-        df_ann_clean = df_ann[valid_rows_mask].copy()
-        
-        # Create a multi-hot label vector.
-        df_ann_clean['label'] = df_ann_clean.apply(self.create_label, axis=1)
-        
-        # Merge with the mimic notes using the ROW_ID key.
-        df_merged = df_ann_clean.merge(df_mimic[['ROW_ID', 'TEXT']], on='ROW_ID', how='inner')
-        
-        # Keep only the TEXT and label columns.
-        df_final = df_merged[['TEXT', 'label']]
-        
-        # Create a human-readable string for the label.
-        def multi_hot_to_str(label_vector, names):
-            # Only include names from phenotype_cols (not 'NONE') when a flag is active.
-            active = [name for val, name in zip(label_vector, self.phenotype_cols) if val == 1]
-            return ",".join(active)
-        df_final['label_str'] = df_final['label'].apply(lambda vec: multi_hot_to_str(vec, self.phenotype_cols))
-        
-        # Rename the TEXT column to "text" (and optionally rename 'label' to 'labels').
-        df_final = df_final.rename(columns={'TEXT': 'text', 'label': 'labels'})
-        
-        # Create a unique identifier for each example.
-        df_final = df_final.reset_index().rename(columns={'index': 'guid'})
-        
-        # Convert the pandas DataFrame to a Hugging Face Dataset.
-        ds = Dataset.from_pandas(df_final)
-        
-        # Split the dataset into train (80%), validation (10%), and test (10%).
-        # First, reserve 20% for the test set.
-        ds_split = ds.train_test_split(test_size=0.2, seed=42)
-        ds_test = ds_split["test"]
-        ds_train_val = ds_split["train"]
-        # From the remaining 80%, reserve 12.5% for validation (which makes overall 10% validation).
-        ds_train_val = ds_train_val.train_test_split(test_size=0.125, seed=42)
-        ds_train = ds_train_val["train"]
-        ds_validation = ds_train_val["test"]
-        
-        dataset_dict = DatasetDict({
-            "train": ds_train,
-            "validation": ds_validation,
-            "test": ds_test
-        })  
-        
-        return dataset_dict
+        # if we've cached already, just load
+        if os.path.isdir(self.cache_dir):
+            return DatasetDict.load_from_disk(self.cache_dir)
+        # 1) Load the annotation and notes CSVs
+        df_ann = pd.read_csv("../../data/raw/phenotype/ACTdb102003.csv")
+        df_mimic = pd.read_csv("../../data/raw/phenotype/NOTEEVENTS.csv")
 
-    def create_label(self, row):
-        if row['NONE'] == 1:
-            return [0] * self.num_labels
-        else:
-            return row[self.all_phenotype_cols].tolist()
+        # 2) Filter out inconsistent rows (NONE=1 & any phenotype=1)
+        mask = ~((df_ann['NONE'] == 1) & (df_ann[self.class_names].sum(axis=1) > 0))
+        df_ann = df_ann[mask].copy()
+
+        # 3) Build the multi-hot "labels" vector of length len(class_names)
+        df_ann['labels'] = df_ann.apply(self.make_multi_hot, axis=1)
+
+        # 4) Merge with the text from NOTEEVENTS
+        df = df_ann.merge(
+            df_mimic[['ROW_ID', 'TEXT']],
+            on='ROW_ID', how='inner'
+        )[['TEXT', 'labels']]
+
+        # 5) Rename for HF Dataset
+        df = df.rename(columns={'TEXT': 'text'})
+
+        # 6) Convert to HF Dataset and split
+        ds = Dataset.from_pandas(df.reset_index(drop=True))
+
+        # first split off 20% for test
+        split1 = ds.train_test_split(test_size=0.2, seed=42)
+        train_val = split1['train']
+        test_ds   = split1['test']
+        # then split train_val (10% of total)
+        split2 = train_val.train_test_split(test_size=0.125, seed=42)
+        train_ds = split2['train']
+        val_ds   = split2['test']
+
+        dataset_dict = DatasetDict({
+            'train': train_ds,
+            'validation': val_ds,
+            'test': test_ds
+        })
+
+        # 6) cache to disk
+        os.makedirs(self.cache_dir, exist_ok=True)
+        dataset_dict.save_to_disk(self.cache_dir)
+
+        return dataset_dict
+    
+    def make_multi_hot(self, row):
+            # if NONE=1, then no phenotype => all zeros
+            if row['NONE'] == 1:
+                return [0] * self.num_labels
+            else:
+                return row[self.class_names].astype(int).tolist()
