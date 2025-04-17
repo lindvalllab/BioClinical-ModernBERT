@@ -17,7 +17,7 @@ class TokenClassificationTrainer:
         self.id2label = data_wrapper.id2label
         self.label2id = data_wrapper.label2id
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, add_prefix_space=True)
         self.model = AutoModelForTokenClassification.from_pretrained(
             model_checkpoint,
             num_labels=data_wrapper.num_labels,
