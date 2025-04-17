@@ -8,7 +8,7 @@ from transformers import (
 from src.metrics.metrics import compute_metrics_token_classification
 
 class TokenClassificationTrainer:
-    def __init__(self, device, model_checkpoint, data_wrapper, training_args, checkpoint_dir, id2label, label2id):
+    def __init__(self, device, model_checkpoint, data_wrapper, training_args, checkpoint_dir):
         self.device = device
         self.model_checkpoint = model_checkpoint
         self.ds = data_wrapper.dataset
@@ -20,9 +20,7 @@ class TokenClassificationTrainer:
         self.tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, add_prefix_space=True)
         self.model = AutoModelForTokenClassification.from_pretrained(
             model_checkpoint,
-            num_labels=data_wrapper.num_labels,
-            id2label=id2label,
-            label2id=label2id,
+            num_labels=data_wrapper.num_labels
         )
         self.model.to(self.device)
         
