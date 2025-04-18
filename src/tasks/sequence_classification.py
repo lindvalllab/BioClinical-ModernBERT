@@ -36,7 +36,7 @@ class SequenceClassificationTrainer():
     
     def tokenize(self, batch):
         if self.is_entailment:
-            return self.tokenizer(batch["premise"], batch["hypothesis"], truncation=True, max_length=self.max_length)
+            return self.tokenizer(batch["premise"], batch["hypothesis"], truncation='only_first', max_length=self.max_length)
         else:
             return self.tokenizer(batch["text"], truncation=True, max_length=self.max_length)
     
