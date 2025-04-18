@@ -15,6 +15,7 @@ class SequenceClassificationTrainer():
         self.problem_type = data_wrapper.problem_type
         self.training_args = training_args
         self.checkpoint_dir = checkpoint_dir
+        self.is_entailment = data_wrapper.is_entailment
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_checkpoint, add_prefix_space=True)
         self.model = AutoModelForSequenceClassification.from_pretrained(
@@ -25,13 +26,19 @@ class SequenceClassificationTrainer():
         self.model.to(self.device)
         # fix for emilyalsentzer/Bio_ClinicalBERT
         self.max_length = self.tokenizer.model_max_length if self.tokenizer.model_max_length < 10000 else 512
-        self.ds = self.ds.map(self.tokenize, batched=True, remove_columns=["text"])
+        if self.is_entailment:
+            self.ds = self.ds.map(self.tokenize, batched=True, remove_columns=["premise", "hypothesis"])
+        else:
+            self.ds = self.ds.map(self.tokenize, batched=True, remove_columns=["text"])
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
         self.trainer = None
         self.test_results = None
     
     def tokenize(self, batch):
-        return self.tokenizer(batch["text"], truncation=True, max_length=self.max_length)
+        if self.is_entailment:
+            return self.tokenizer(batch["premise"], batch["hypothesis"], truncation=True, max_length=self.max_length)
+        else:
+            return self.tokenizer(batch["text"], truncation=True, max_length=self.max_length)
     
     def get_compute_metrics(self):
         if self.problem_type == "multi_label_classification":

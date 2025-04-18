@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from pathlib import Path
 from datasets import load_dataset, Dataset, DatasetDict
+from sklearn.model_selection import train_test_split
 
 HERE = Path(__file__).resolve().parent        # .../project/src/dataloader
 PROJECT_ROOT = HERE.parent.parent             # .../project
@@ -217,6 +218,48 @@ class ChemProt:
         })
 
         # 6) cache to disk
+        os.makedirs(self.cache_dir, exist_ok=True)
+        dataset_dict.save_to_disk(self.cache_dir)
+
+        return dataset_dict
+    
+
+class FactEHR:
+    def __init__(self):
+        self.cache_dir = os.path.join(f"{PROJECT_ROOT}/data/processed/factehr")
+        self.is_entailment = True
+        self.problem_type = "single_label_classification"
+        self.dataset = self.preprocess_data()
+        self.class_names = ["No", "Yes"]
+        self.num_labels = len(self.class_names)
+
+    def preprocess_data(self):
+        # if we've cached already, just load
+        if os.path.isdir(self.cache_dir):
+            return DatasetDict.load_from_disk(self.cache_dir)
+        
+        # 1) Load the CSV file
+        df = pd.read_csv(f"{PROJECT_ROOT}/data/raw/FactEHR/factehr_dev_set.csv")
+
+        # 2) Rename columns for HF Dataset
+        df = df.rename(columns={'premise': 'premise', 'hypothesis': 'hypothesis', 'human_label': 'labels'})
+
+        # 3) Stratified split to maintain the distribution of labels
+        train_val_df, test_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df['labels'])
+        train_df, val_df = train_test_split(train_val_df, test_size=0.125, random_state=42, stratify=train_val_df['labels'])
+
+        # Convert to HF Dataset
+        train_ds = Dataset.from_pandas(train_df.reset_index(drop=True))
+        val_ds = Dataset.from_pandas(val_df.reset_index(drop=True))
+        test_ds = Dataset.from_pandas(test_df.reset_index(drop=True))
+
+        dataset_dict = DatasetDict({
+            'train': train_ds,
+            'validation': val_ds,
+            'test': test_ds
+        })
+
+        # 4) cache to disk
         os.makedirs(self.cache_dir, exist_ok=True)
         dataset_dict.save_to_disk(self.cache_dir)
 
