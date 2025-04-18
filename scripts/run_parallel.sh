@@ -13,6 +13,8 @@ source $(conda info --base)/etc/profile.d/conda.sh
 # conda activate bio_clinical_mbert
 conda activate bert24
 
+# Default list of seeds
+seeds=(42 43 44 45 46)
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
@@ -24,19 +26,18 @@ while [[ "$#" -gt 0 ]]; do
         --epochs) epochs="$2"; shift ;;
         --batch_size) batch_size="$2"; shift ;;
         --accumulation_steps) accumulation_steps="$2"; shift ;;
+        --seed) seeds=("$2"); shift ;;  # overwrite default seed list with a single seed
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
 done
+
 
 # Check for required parameters
 if [[ -z "$dataset" || -z "$model" || -z "$lr" || -z "$wd" || -z "$epochs" || -z "$batch_size" || -z "$accumulation_steps" ]]; then
     echo "Usage: $0 --dataset <dataset> --model <model> --lr <learning_rate> --wd <weight_decay> --epochs <epochs> --batch_size <batch_size> --accumulation_steps <accumulation_steps>"
     exit 1
 fi
-
-# List of seeds to run in parallel
-seeds=(42 43 44 45 46)
 
 # Launch experiments with each seed in parallel
 for seed in "${seeds[@]}"; do
