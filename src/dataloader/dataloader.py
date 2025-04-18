@@ -16,6 +16,8 @@ def get_data(name):
         return Phenotype()
     elif name == "ChemProt":
         return ChemProt()
+    elif name == "FactEHR":
+        return FactEHR()
     else:
         raise NotImplementedError(f"Dataset {name} not implemented.")
 
