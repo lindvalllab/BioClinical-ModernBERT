@@ -13,6 +13,8 @@ def get_data(name):
         return MedQA()
     elif name == "Phenotype":
         return Phenotype()
+    elif name == "ChemProt":
+        return ChemProt()
     else:
         raise NotImplementedError(f"Dataset {name} not implemented.")
 
@@ -31,6 +33,7 @@ class HOC:
             "sustaining proliferative signaling",
             "avoiding immune destruction",
         ]
+        self.is_entailment = False
         self.num_labels = len(self.class_names) - 1 # drop "none", so 10 classes
         self.problem_type = "multi_label_classification"
         self.dataset = self.preprocess_data()
@@ -63,6 +66,7 @@ class HOC:
 class MedQA:
     def __init__(self):
         # For MedQA, we have four options (A, B, C, D).
+        self.is_entailment = False
         self.class_names = ["A", "B", "C", "D"]
         self.num_labels = len(self.class_names)   # 4 classes for single-label classification
         self.problem_type = "single_label_classification"
@@ -104,6 +108,7 @@ class Phenotype:
             'OBESITY', 'OTHER.SUBSTANCE.ABUSE',
             'SCHIZOPHRENIA.AND.OTHER.PSYCHIATRIC.DISORDERS', 'UNSURE'
         ]
+        self.is_entailment = False
         self.num_labels = len(self.class_names)
         self.problem_type = "multi_label_classification"
         self.cache_dir = os.path.join(f"{PROJECT_ROOT}/data/processed/phenotype")
@@ -164,3 +169,55 @@ class Phenotype:
         else:
             # cast each entry to float
             return [float(x) for x in row[self.class_names].tolist()]
+
+
+class ChemProt:
+    def __init__(self):
+        self.is_entailment = False
+        self.problem_type = "single_label_classification"
+        # where to cache the processed HuggingFace dataset
+        self.cache_dir = os.path.join(f"{PROJECT_ROOT}/data/processed/ChemProt")
+        # load (or preprocess & cache)
+        self.dataset = self.preprocess_data()
+        # after dataset is ready, set class names and num_labels
+        self.class_names = self.dataset["train"].features["labels"].names
+        self.num_labels = len(self.class_names)
+
+    def preprocess_data(self):
+        # 1) load from cache if available
+        if os.path.isdir(self.cache_dir):
+            return DatasetDict.load_from_disk(self.cache_dir)
+
+        # 2) read train/dev/test TSVs
+        splits = {}
+        for split in ["train", "dev", "test"]:
+            path = os.path.join(f"{PROJECT_ROOT}/data/raw/ChemProt/{split}.tsv")
+            df = pd.read_csv(path, sep="\t")
+            # rename columns
+            df = df.rename(columns={"sentence": "text", "label": "label_str"})
+            splits[split] = df
+
+        # 4) convert each DataFrame to a Dataset, mapping labels
+        ds_splits = {}
+        for split, df in splits.items():
+            ds = Dataset.from_pandas(df, preserve_index=False)
+            # cast the string column to ClassLabel
+            ds = ds.class_encode_column(
+                column="label_str"
+            )
+            # now the label column is named "label_str" → rename to "labels"
+            ds = ds.rename_column("label_str", "labels")
+            ds_splits[split] = ds
+
+        # 5) assemble DatasetDict, mapping "dev"→"validation"
+        dataset_dict = DatasetDict({
+            "train": ds_splits["train"],
+            "validation": ds_splits["dev"],
+            "test": ds_splits["test"]
+        })
+
+        # 6) cache to disk
+        os.makedirs(self.cache_dir, exist_ok=True)
+        dataset_dict.save_to_disk(self.cache_dir)
+
+        return dataset_dict
