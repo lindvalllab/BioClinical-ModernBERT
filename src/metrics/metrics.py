@@ -155,4 +155,4 @@ def evaluate_mmlu(model, tokenizer, examples):
     
     # Compute accuracy over the entire dataset.
     acc = accuracy_score(golds, preds)
-    return acc, preds, golds
+    return {"acc": acc}
