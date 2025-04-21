@@ -5,13 +5,12 @@ from transformers import (
     TrainingArguments,
     DataCollatorWithPadding
 )
-from src.metrics.metrics import compute_metrics_multi_label_classification, compute_metrics_single_label_classification
+from src.metrics.metrics import evaluate_mmlu
 
-class SequenceClassificationTrainer():
+class MaskClassificationTrainer():
     def __init__(self, device, model_checkpoint, data_wrapper, training_args, checkpoint_dir):
         self.device = device
         self.model_checkpoint = model_checkpoint
-        self.ds = data_wrapper.dataset
         self.training_args = training_args
         self.checkpoint_dir = checkpoint_dir
 
@@ -22,27 +21,13 @@ class SequenceClassificationTrainer():
         self.model.to(self.device)
         # fix for emilyalsentzer/Bio_ClinicalBERT
         self.max_length = self.tokenizer.model_max_length if self.tokenizer.model_max_length < 10000 else 512
-        if self.is_entailment:
-            self.ds = self.ds.map(self.tokenize, batched=True, remove_columns=["premise", "hypothesis"])
-        else:
-            self.ds = self.ds.map(self.tokenize, batched=True, remove_columns=["text"])
         self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
+        
+        data_wrapper.tokenize_train_eval_datasets(self.tokenizer, self.max_length)
+        self.ds = data_wrapper.dataset
+
         self.trainer = None
         self.test_results = None
-    
-    def tokenize(self, batch):
-        if self.is_entailment:
-            return self.tokenizer(batch["premise"], batch["hypothesis"], truncation=True, max_length=self.max_length)
-        else:
-            return self.tokenizer(batch["text"], truncation=True, max_length=self.max_length)
-    
-    def get_compute_metrics(self):
-        if self.problem_type == "multi_label_classification":
-            return compute_metrics_multi_label_classification
-        elif self.problem_type == "single_label_classification":
-            return compute_metrics_single_label_classification
-        else:
-            raise NotImplementedError(f"No compute metrics function for {self.problem_type} has been implemented")
 
     def train(self):
         training_args = TrainingArguments(
@@ -50,8 +35,6 @@ class SequenceClassificationTrainer():
             eval_strategy="epoch",
             save_strategy="epoch",
             logging_steps=10,
-            load_best_model_at_end=True,
-            metric_for_best_model="weighted_f1",
             save_total_limit=1,
             report_to="none",
             **self.training_args
@@ -62,10 +45,11 @@ class SequenceClassificationTrainer():
             train_dataset=self.ds["train"],
             eval_dataset=self.ds["validation"],
             data_collator=self.data_collator,
-            tokenizer=self.tokenizer,
-            compute_metrics=self.get_compute_metrics(),
+            tokenizer=self.tokenizer
         )
         self.trainer.train()
     
     def evaluate(self):
-        self.test_results = self.trainer.evaluate(self.ds["test"])
+        model = self.trainer.model
+        model.eval()
+        self.test_results = evaluate_mmlu(model, self.tokenizer, self.ds["test"])

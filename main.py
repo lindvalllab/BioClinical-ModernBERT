@@ -8,6 +8,7 @@ torch.set_float32_matmul_precision('high')
 
 from src.dataloader.dataloader import get_data
 from src.tasks.sequence_classification import SequenceClassificationTrainer
+from src.tasks.mask_classification import MaskClassificationTrainer
 
 project_root = os.path.dirname(os.path.abspath(__file__))
 
@@ -62,6 +63,10 @@ def main(args):
     # Initialize the correct trainer based on the problem type.
     if "classification" in data_wrapper.problem_type:
         trainer_obj = SequenceClassificationTrainer(
+            device, args.model, data_wrapper, training_args, checkpoint_dir
+        )
+    elif "mask" in data_wrapper.problem_type:
+        trainer_obj = MaskClassificationTrainer(
             device, args.model, data_wrapper, training_args, checkpoint_dir
         )
     else:
