@@ -5,6 +5,7 @@ from transformers import (
     TrainingArguments,
     DataCollatorForTokenClassification
 )
+from functools import partial
 from src.metrics.metrics import compute_metrics_token_classification
 
 class TokenClassificationTrainer:
@@ -76,7 +77,7 @@ class TokenClassificationTrainer:
         """
         training_args = TrainingArguments(
             output_dir=self.checkpoint_dir,
-            evaluation_strategy="epoch",
+            eval_strategy="epoch",
             save_strategy="epoch",
             logging_steps=10,
             load_best_model_at_end=True,
@@ -88,11 +89,11 @@ class TokenClassificationTrainer:
         self.trainer = Trainer(
             model=self.model,
             args=training_args,
-            train_dataset=self.dataset["train"],
-            eval_dataset=self.dataset["validation"],
+            train_dataset=self.ds["train"],
+            eval_dataset=self.ds["validation"],
             data_collator=self.data_collator,
             tokenizer=self.tokenizer,
-            compute_metrics=compute_metrics_token_classification,
+            compute_metrics=partial(compute_metrics_token_classification, id2label=self.id2label)
         )
         self.trainer.train()
 
@@ -100,4 +101,4 @@ class TokenClassificationTrainer:
         """
         Evaluates the model on the test split and stores the test results.
         """
-        self.test_results = self.trainer.evaluate(self.dataset["test"])
+        self.test_results = self.trainer.evaluate(self.ds["test"])

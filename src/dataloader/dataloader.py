@@ -2,9 +2,10 @@ import os
 import pandas as pd
 import torch
 import random
+import re
 from functools import partial
 from pathlib import Path
-from datasets import load_dataset, Dataset, DatasetDict
+from datasets import load_dataset, Dataset, DatasetDict, ClassLabel, Sequence, Value, Features
 from sklearn.model_selection import train_test_split
 
 HERE = Path(__file__).resolve().parent        # .../project/src/dataloader
@@ -21,6 +22,8 @@ def get_data(name):
         return ChemProt()
     elif name == "FactEHR":
         return FactEHR()
+    elif name == "DEID":
+        return DEID()
     else:
         raise NotImplementedError(f"Dataset {name} not implemented.")
 
@@ -239,7 +242,6 @@ class FactEHR:
 class MedQA:
     """Adapted from https://github.com/AnswerDotAI/ModernBERT-Instruct-mini-cookbook"""
     def __init__(self):
-        # For MedQA, we have four options (A, B, C, D).
         self.problem_type = "mask_qa"
         self.dataset = self.preprocess_data()
         self.dummy_examples = True
@@ -335,3 +337,231 @@ class MedQA:
             'attention_mask': attention_mask,
             'labels': labels
         }
+
+
+class DEID:
+    def __init__(self):
+        self.cache_dir = os.path.join(f"{PROJECT_ROOT}/data/processed/DEID")
+        self.problem_type = "token_classification"
+        self.id2label = {0: 'O',
+                         1: 'B-age',
+                         2: 'B-date',
+                         3: 'B-location',
+                         4: 'B-name',
+                         5: 'B-other',
+                         6: 'B-phone_nb',
+                         7: 'I-age',
+                         8: 'I-date',
+                         9: 'I-location',
+                         10: 'I-name',
+                         11: 'I-other',
+                         12: 'I-phone_nb'
+                         }
+        self.label2id = {label: idx for idx, label in self.id2label.items()}
+        self.num_labels = len(self.id2label)
+        self.dataset = self.preprocess_data()
+
+    def preprocess_data(self):
+        # 1. If we've cached already, just load
+        if os.path.isdir(self.cache_dir):
+            return DatasetDict.load_from_disk(self.cache_dir)
+
+        # 2. Load raw records
+        records_txt = self.load_records(f"{PROJECT_ROOT}/data/raw/DEID/id.text")
+        records_res = self.load_records(f"{PROJECT_ROOT}/data/raw/DEID/id.res")
+        if len(records_txt) != len(records_res):
+            print("Warning: The number of records in id.txt and id.res do not match.")
+
+        # 3. Turn each pair of records into a token‑level example
+        examples = []
+        for rec_txt, rec_res in zip(records_txt, records_res):
+            token_tag_pairs = self.process_record(rec_txt, rec_res)
+            tokens, tags = zip(*token_tag_pairs)
+            examples.append({
+                "tokens": list(tokens),
+                "ner_tags": tags
+            })
+
+        # 4. Split into train / validation / test
+        train_ex, temp_ex = train_test_split(examples, test_size=0.30, random_state=42)
+        dev_ex,  test_ex = train_test_split(temp_ex, test_size=0.50, random_state=42)
+
+        # 5. Build a DatasetDict
+        ds = DatasetDict({
+            "train":      Dataset.from_list(train_ex),
+            "validation": Dataset.from_list(dev_ex),
+            "test":       Dataset.from_list(test_ex),
+        })
+
+        label_list = [ self.id2label[i] for i in range(self.num_labels) ]
+        class_label = ClassLabel(names=label_list)
+
+        features = Features({
+            "tokens": Sequence(feature=Value("string")),
+            "ner_tags": Sequence(feature=class_label),
+        })
+
+        ds = ds.cast(features)
+
+        # 6. Cache to disk and return
+        os.makedirs(self.cache_dir, exist_ok=True)
+        ds.save_to_disk(self.cache_dir)
+        return ds
+
+
+    def write_records(self, records, filename):
+        with open(filename, 'w', encoding='utf-8') as f:
+            # Records in CoNLL format are separated by a blank line.
+            for record in records:
+                f.write(record + "\n\n")
+        
+    def load_records(self, filename):
+        """
+        Read the entire file and extract records.
+        
+        Each record is assumed to start with a line beginning with
+        "START_OF_RECORD=" and end with "||||END_OF_RECORD". The regex
+        uses a non-greedy match (.*?) to capture all content between these markers.
+        The DOTALL flag ensures that newline characters are included in the match.
+        """
+        with open(filename, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Regex pattern to match each record including the markers.
+        pattern = r'(START_OF_RECORD=.*?\|\|\|\|END_OF_RECORD)'
+        records = re.findall(pattern, content, flags=re.DOTALL)
+        return records
+
+    def extract_masks(self, record):
+        """
+        Given a record string, extract all masks.
+        
+        Masks in the file are in the form: [**Some Text Here**]
+        The regex uses non-greedy matching (.*?) to extract the mask contents.
+        """
+        mask_pattern = r'\[\*\*.*?\*\*\]'
+        return re.findall(mask_pattern, record)
+    
+    def process_record(self, text_txt, text_res):
+        """
+        Given a record from the original file (id.txt) and the corresponding record from
+        the masked file (id.res), produce a list of (token, tag) tuples in CoNLL format.
+        
+        Steps:
+        1. Remove record markers and any header number pattern (e.g. "1||||1||||") from both texts.
+        2. Replace newlines with a space.
+        3. Split the masked text (text_res) into alternating plain text and mask segments.
+        4. Traverse text_txt using a pointer. Plain text segments are tokenized and tagged as 'O'.
+            For each mask segment, the corresponding span in text_txt is tokenized;
+            its first token is tagged B-<category> and the remainder I-<category>.
+        """
+        # 1. Remove record markers.
+        for marker in ["START_OF_RECORD=", "||||END_OF_RECORD"]:
+            text_txt = text_txt.replace(marker, "")
+            text_res = text_res.replace(marker, "")
+        
+        # Remove header pattern left from beginning, e.g., "1||||1||||"
+        text_txt = re.sub(r'^\d+\|\|\|\|\d+\|\|\|\|', '', text_txt)
+        text_res = re.sub(r'^\d+\|\|\|\|\d+\|\|\|\|', '', text_res)
+        
+        text_txt = text_txt.strip()
+        text_res = text_res.strip()
+        
+        # 2. Replace newlines with a space.
+        text_txt = text_txt.replace("\n", " ")
+        text_res = text_res.replace("\n", " ")
+        
+        # 3. Split the masked record into segments; even indices: plain text, odd: mask placeholders.
+        segments = re.split(r'(\[\*\*.*?\*\*\])', text_res)
+        
+        pointer = 0  # pointer in text_txt
+        tokens_with_tags = []
+        
+        for i, segment in enumerate(segments):
+            if i % 2 == 0:
+                # Plain text segment.
+                plain = segment
+                for token in plain.split():
+                    tokens_with_tags.append((token, "O"))
+                pointer += len(plain)
+            else:
+                # Mask placeholder segment.
+                cat = self.map_mask(segment)
+                # Look ahead to the next plain segment to determine the extent of the masked span.
+                next_plain = segments[i+1] if (i+1) < len(segments) else ""
+                if next_plain:
+                    pos = text_txt.find(next_plain, pointer)
+                    if pos == -1:
+                        pos = len(text_txt)
+                else:
+                    pos = len(text_txt)
+                masked_text = text_txt[pointer:pos]
+                masked_tokens = masked_text.split()
+                if masked_tokens:
+                    b_tag = f"B-{cat}" if cat is not None else "B"
+                    tokens_with_tags.append((masked_tokens[0], b_tag))
+                    for token in masked_tokens[1:]:
+                        i_tag = f"I-{cat}" if cat is not None else "I"
+                        tokens_with_tags.append((token, i_tag))
+                pointer = pos
+        return tokens_with_tags
+    
+    def map_mask(self, mask):
+        """
+        Map a given mask to a category based on the mapping rules.
+        
+        Updated rules:
+        - If the mask (case-insensitive) contains "name", return "name".
+        - If the mask contains "e-mail address" (or "email address"), return "other".
+        - If the mask contains "telephone/fax" or "pager number", return "phone_nb".
+        - If the mask contains "age over", return "age".
+        - If the mask contains "location", return "location".
+        - Also, if it contains any of the location-specific keywords ("hospital", "street address", "unit number"), map to "location".
+        - If the mask is numeric, looks like a date (e.g. "01-01", "1959", "1901-12-16"), or contains "date range" or "month/year", return "date".
+        - If the mask is blank or contains "company", return "other".
+        - Otherwise, return None.
+        """
+        # Remove the markers and trim whitespace.
+        content = mask[3:-3].strip()
+        lower_content = content.lower()
+        
+        # Priority for name: if the text contains "name", map to "name".
+        if "name" in lower_content:
+            return "name"
+        
+        # Explicitly check for e-mail address and map to other.
+        if "e-mail address" in lower_content or "email address" in lower_content:
+            return "other"
+        
+        # Rule for phone number: if the text contains "telephone/fax" or "pager number".
+        if "telephone/fax" in lower_content or "pager number" in lower_content:
+            return "phone_nb"
+        
+        # Rule for age.
+        if "age over" in lower_content:
+            return "age"
+        
+        # Rule for location: if the text contains "location".
+        if "location" in lower_content:
+            return "location"
+        
+        # Additional location-specific keywords.
+        for keyword in ["hospital", "street address", "unit number"]:
+            if keyword in lower_content:
+                return "location"
+        
+        # Rule for date: check for purely numeric values or typical date patterns.
+        if (re.fullmatch(r'\d+', content) or 
+            re.fullmatch(r'\d{1,2}-\d{1,2}', content) or 
+            re.fullmatch(r'\d{4}', content) or 
+            re.fullmatch(r'\d{4}-\d{2}-\d{2}', content) or 
+            "date range" in lower_content or 
+            "month/year" in lower_content):
+            return "date"
+        
+        # Rule for other: if the mask is blank or contains "company".
+        if content == "" or "company" in lower_content:
+            return "other"
+        
+        # Return None if no category fits.
+        return None
