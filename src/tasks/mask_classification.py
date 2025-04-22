@@ -5,7 +5,7 @@ from transformers import (
     TrainingArguments,
     DataCollatorWithPadding
 )
-from src.metrics.metrics import evaluate_mmlu
+from src.metrics.metrics import evaluate_mmlu, compute_metrics_mlm_for_training
 
 class MaskClassificationTrainer():
     def __init__(self, device, model_checkpoint, data_wrapper, training_args, checkpoint_dir):
@@ -21,7 +21,6 @@ class MaskClassificationTrainer():
         self.model.to(self.device)
         # fix for emilyalsentzer/Bio_ClinicalBERT
         self.max_length = self.tokenizer.model_max_length if self.tokenizer.model_max_length < 10000 else 512
-        self.data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
         
         data_wrapper.tokenize_train_eval_datasets(self.tokenizer, self.max_length)
         self.ds = data_wrapper.dataset
@@ -37,6 +36,10 @@ class MaskClassificationTrainer():
             logging_steps=10,
             save_total_limit=1,
             report_to="none",
+            # load_best_model_at_end=True,
+            # metric_for_best_model="accuracy",
+            # greater_is_better=True,
+            # eval_accumulation_steps=1,
             **self.training_args
         )
         self.trainer = Trainer(
@@ -44,8 +47,8 @@ class MaskClassificationTrainer():
             args=training_args,
             train_dataset=self.ds["train"],
             eval_dataset=self.ds["validation"],
-            data_collator=self.data_collator,
-            tokenizer=self.tokenizer
+            tokenizer=self.tokenizer,
+            # compute_metrics=compute_metrics_mlm_for_training
         )
         self.trainer.train()
     

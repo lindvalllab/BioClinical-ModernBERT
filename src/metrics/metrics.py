@@ -155,4 +155,21 @@ def evaluate_mmlu(model, tokenizer, examples):
     
     # Compute accuracy over the entire dataset.
     acc = accuracy_score(golds, preds)
-    return {"acc": acc}
+    return {"accuracy": acc}
+
+def compute_metrics_mlm_for_training(eval_pred):
+    """
+    eval_pred.predictions: np.ndarray of shape (batch, seq_len, vocab_size)
+    eval_pred.label_ids:      np.ndarray of shape (batch, seq_len)
+    """
+    logits, labels = eval_pred.predictions, eval_pred.label_ids
+    # get the predicted token‐ids at each position
+    pred_ids = logits.argmax(axis=-1)
+
+    # only keep the positions where label != -100 (i.e., your masked token)
+    mask = labels != -100
+
+    # flatten and compare
+    correct = (pred_ids[mask] == labels[mask]).astype(np.float32)
+    acc     = correct.mean().item()
+    return {"accuracy": acc}
