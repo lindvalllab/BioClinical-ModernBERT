@@ -24,6 +24,8 @@ def get_data(name):
         return FactEHR()
     elif name == "DEID":
         return DEID()
+    elif name == "COS":
+        return COS()
     else:
         raise NotImplementedError(f"Dataset {name} not implemented.")
 
@@ -565,3 +567,126 @@ class DEID:
         
         # Return None if no category fits.
         return None
+    
+
+class COS:
+    def __init__(self):
+        # Problem setup
+        self.problem_type = "token_classification"
+        self.id2label = {0: 'B-Attr', 1: 'B-Cos', 2: 'B-Loc', 3: 'B-Ref',
+                         4: 'B-Val', 5: 'I-Attr', 6: 'I-Cos', 7: 'I-Loc',
+                         8: 'I-Ref', 9: 'I-Val', 10: 'O'}
+        self.label2id = {label: idx for idx, label in self.id2label.items()}
+        self.num_labels = len(self.id2label)
+
+        # Load the dataset
+        self.dataset = self.load_brat_as_dataset(f"{PROJECT_ROOT}/data/raw/COS")
+
+    def process_ann_only(self, ann_path):
+        """
+        Reads only the .ann file in two passes:
+         1) Collect all Snippet entries (record boundaries + text)
+         2) For each snippet, re-read the file to gather all Cos/Ref/Loc/Attr/Val spans
+            that fall within that snippet, tokenize, and assign BIO labels.
+        Returns a list of {"tokens": [...], "ner_tags": [...]} examples.
+        """
+        # --- PASS 1: collect snippet boundaries & text ---
+        snippets = []
+        with open(ann_path, encoding="utf-8") as f:
+            for line in f:
+                if not line.startswith("T"):
+                    continue
+                tid, rest = line.split("\t", 1)
+                parts = rest.split()
+                if parts[0] != "Snippet" or len(parts) < 4:
+                    continue
+                start, end = map(int, parts[1:3])
+                text = rest.split(None, 3)[-1].strip()
+                snippets.append({"start": start, "end": end, "text": text})
+
+        examples = []
+        # --- PASS 2: for each snippet, collect features & BIO-tag ---
+        for snip in snippets:
+            s_start, s_end, s_text = snip["start"], snip["end"], snip["text"]
+
+            # gather relevant feature spans
+            feats = []
+            with open(ann_path, encoding="utf-8") as f2:
+                for line in f2:
+                    if not line.startswith("T"):
+                        continue
+                    tid, rest = line.split("\t", 1)
+                    parts = rest.split()
+                    label = parts[0]
+                    if label not in {"Cos", "Ref", "Loc", "Attr", "Val"} or len(parts) < 4:
+                        continue
+                    start, end = map(int, parts[1:3])
+                    # only keep those inside the snippet span
+                    if start < s_start or end > s_end:
+                        continue
+                    feats.append({
+                        "label": label,
+                        "start": start - s_start,  # relative to snippet
+                        "end":   end   - s_start
+                    })
+
+            # tokenize snippet text, splitting off punctuation
+            tokens, spans = [], []
+            for m in re.finditer(r"\w+|[^\w\s]", s_text):
+                tokens.append(m.group())
+                spans.append((m.start(), m.end()))
+
+            # initialize all-O tags
+            ner_tags = ["O"] * len(tokens)
+
+            # assign BIO tags
+            for feat in feats:
+                idxs = [
+                    i for i, (ts, te) in enumerate(spans)
+                    if ts >= feat["start"] and te <= feat["end"]
+                ]
+                if not idxs:
+                    continue
+                ner_tags[idxs[0]] = f"B-{feat['label']}"
+                for i in idxs[1:]:
+                    ner_tags[i] = f"I-{feat['label']}"
+
+            examples.append({
+                "tokens":   tokens,
+                "ner_tags": ner_tags
+            })
+
+        return examples
+
+    def load_brat_as_dataset(self, folder):
+        # collect all examples from every .ann file
+        all_exs = []
+        for fn in sorted(os.listdir(folder)):
+            if not fn.endswith(".ann"):
+                continue
+            ann_path = os.path.join(folder, fn)
+            all_exs.extend(self.process_ann_only(ann_path))
+
+        # build HuggingFace DatasetDict splits
+        ds = Dataset.from_list(all_exs)
+        split1 = ds.train_test_split(test_size=0.3, seed=42)
+        train = split1["train"]
+        rest  = split1["test"].train_test_split(test_size=0.5, seed=42)
+        eval_ = rest["train"]
+        test  = rest["test"]
+        ds = DatasetDict({
+            "train":      train,
+            "evaluation": eval_,
+            "test":       test
+        })
+
+        # cast ner_tags to ClassLabel
+        label_list  = [ self.id2label[i] for i in range(self.num_labels) ]
+        class_label = ClassLabel(names=label_list)
+        features    = Features({
+            "tokens":   Sequence(feature=Value("string")),
+            "ner_tags": Sequence(feature=class_label)
+        })
+        ds = ds.cast(features)
+
+        return ds
