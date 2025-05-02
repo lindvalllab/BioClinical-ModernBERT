@@ -26,6 +26,8 @@ def get_data(name):
         return DEID()
     elif name == "COS":
         return COS()
+    elif name == "SocialHistory":
+        return SocialHistory()
     else:
         raise NotImplementedError(f"Dataset {name} not implemented.")
 
