@@ -690,3 +690,105 @@ class COS:
         ds = ds.cast(features)
 
         return ds
+
+class SocialHistory:
+    def __init__(self):
+        self.cache_dir = os.path.join(f"{PROJECT_ROOT}/data/processed/SocialHistory")
+        self.problem_type = "token_classification"
+        self.id2label = {0: 'B-Alcohol', 1: 'B-Amount', 2: 'B-Drug', 3: 'B-EnvironmentalExposure', 4: 'B-ExposureHistory', 5: 'B-Extent',
+                         6: 'B-Family', 7: 'B-Frequency', 8: 'B-History', 9: 'B-InfectiousDiseases', 10: 'B-LivingStatus', 11: 'B-Location',
+                         12: 'B-MaritalStatus', 13: 'B-MedicalCondition', 14: 'B-Method', 15: 'B-Occupation', 16: 'B-Other', 17: 'B-PhysicalActivity',
+                         18: 'B-QuitHistory', 19: 'B-Residence', 20: 'B-SexualHistory', 21: 'B-Status', 22: 'B-Temporal', 23: 'B-Tobacco',
+                         24: 'B-Type', 25: 'I-Alcohol', 26: 'I-Amount', 27: 'I-Drug', 28: 'I-EnvironmentalExposure', 29: 'I-ExposureHistory',
+                         30: 'I-Extent', 31: 'I-Family', 32: 'I-Frequency', 33: 'I-History', 34: 'I-InfectiousDiseases', 35: 'I-LivingSituation',
+                         36: 'I-LivingStatus', 37: 'I-Location', 38: 'I-MaritalStatus', 39: 'I-MedicalCondition', 40: 'I-Method', 41: 'I-Occupation',
+                         42: 'I-Other', 43: 'I-QuitHistory', 44: 'I-Residence', 45: 'I-SexualHistory', 46: 'I-Status', 47: 'I-Temporal', 48: 'I-Tobacco',
+                         49: 'I-Type', 50: 'O'}
+        self.label2id = {label: idx for idx, label in self.id2label.items()}
+        self.num_labels = len(self.id2label)
+        self.dataset = self.load_brat_as_dataset(f"{PROJECT_ROOT}/data/raw/SocialHistory")
+
+    def parse_ann_file(self, ann_path):
+        """Read only text-bound annotations (lines starting with 'T')."""
+        anns = []
+        with open(ann_path, encoding="utf-8") as f:
+            for line in f:
+                if not line.startswith("T"):
+                    continue
+                parts = line.strip().split("\t")
+                if len(parts) < 2:
+                    continue
+                meta = parts[1].split()
+                if len(meta) < 3:
+                    continue
+                typ = meta[0]
+                try:
+                    start, end = map(int, meta[1:3])
+                except ValueError:
+                    continue
+                anns.append({"start": start, "end": end, "type": typ})
+        return sorted(anns, key=lambda x: x["start"])
+
+    def process_pair(self, txt_path, ann_path):
+        """
+        Returns a dict with:
+        - "tokens":  list[str]
+        - "ner_tags": list[str]  (BIO labels)
+        """
+        text = open(txt_path, encoding="utf-8").read()
+        anns = self.parse_ann_file(ann_path)
+
+        # split on whitespace, keep offsets
+        tokens = [(m.group(), m.start(), m.end())
+                for m in re.finditer(r"\S+", text)]
+        labels = ["O"] * len(tokens)
+
+        # assign BIO
+        for ann in anns:
+            st, en, typ = ann["start"], ann["end"], ann["type"]
+            idxs = [i for i,(tok, s,e) in enumerate(tokens) if s>=st and e<=en]
+            if not idxs:
+                continue
+            labels[idxs[0]] = f"B-{typ}"
+            for i in idxs[1:]:
+                labels[i] = f"I-{typ}"
+
+        # strip offsets, return tokens + labels
+        token_strs = [tok for tok,_,_ in tokens]
+        return {"tokens": token_strs, "ner_tags": labels}
+
+    def load_brat_as_dataset(self, folder):
+        # collect all examples
+        examples = []
+        for fn in sorted(os.listdir(folder)):
+            if not fn.endswith(".txt"):
+                continue
+            base = fn[:-4]
+            txt, ann = os.path.join(folder, fn), os.path.join(folder, base+".ann")
+            if not os.path.exists(ann):
+                print(f"Missing .ann for {fn}, skipping.")
+                continue
+            examples.append(self.process_pair(txt, ann))
+
+        # turn into a Dataset and split
+        ds = Dataset.from_list(examples)
+        split1 = ds.train_test_split(test_size=0.3, seed=42)
+        train = split1["train"]
+        rest  = split1["test"].train_test_split(test_size=0.5, seed=42)
+        eval_ = rest["train"]
+        test  = rest["test"]
+        ds = DatasetDict({
+            "train": train,
+            "evaluation": eval_,
+            "test": test
+        })
+        label_list = [ self.id2label[i] for i in range(self.num_labels) ]
+        class_label = ClassLabel(names=label_list)
+
+        features = Features({
+            "tokens": Sequence(feature=Value("string")),
+            "ner_tags": Sequence(feature=class_label),
+        })
+
+        ds = ds.cast(features)
+        return ds
