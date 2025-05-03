@@ -678,7 +678,7 @@ class COS:
         test  = rest["test"]
         ds = DatasetDict({
             "train":      train,
-            "evaluation": eval_,
+            "validation": eval_,
             "test":       test
         })
 
@@ -781,7 +781,7 @@ class SocialHistory:
         test  = rest["test"]
         ds = DatasetDict({
             "train": train,
-            "evaluation": eval_,
+            "validation": eval_,
             "test": test
         })
         label_list = [ self.id2label[i] for i in range(self.num_labels) ]
