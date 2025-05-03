@@ -24,7 +24,8 @@ class TokenClassificationTrainer:
             num_labels=data_wrapper.num_labels
         )
         self.model.to(self.device)
-        
+
+        self.max_length = self.tokenizer.model_max_length if self.tokenizer.model_max_length < 10000 else 512        
         # Preprocess the dataset: tokenize and align labels.
         self.ds = self.ds.map(self.tokenize_and_align_labels, batched=True)
         # Set up dynamic padding via a data collator.
@@ -47,6 +48,7 @@ class TokenClassificationTrainer:
             examples["tokens"],
             truncation=True,
             is_split_into_words=True,
+            max_length=self.max_length
         )
         
         all_labels = []
