@@ -35,7 +35,7 @@ The script `main.py` can be used to fine-tune and evaluate encoders on a downstr
 
 ## Reference
 
-If you use BioClinical ModernBERT in your work, please cite our [preprint](https://arxiv.org/abs/2506.10896):
+If you use BioClinical ModernBERT in your work, whether it be this code, our models or our training checkpoints, please cite our [preprint](https://arxiv.org/abs/2506.10896):
 
 ```
 @misc{sounack2025bioclinicalmodernbertstateoftheartlongcontext,
