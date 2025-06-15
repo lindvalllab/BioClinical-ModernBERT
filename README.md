@@ -31,3 +31,20 @@ The script `main.py` can be used to fine-tune and evaluate encoders on a downstr
 * `--seed`: Random seed for reproducibility. Optional, defaults to `42`.
 * `--batch_size`: Batch size per device for training and evaluation. Optional, defaults to `16`.
 * `--accumulation_steps`: Gradient accumulation step. Optional, defaults to `1`.
+
+
+## Reference
+
+If you use BioClinical ModernBERT in your work, please cite our [preprint](https://arxiv.org/abs/2506.10896):
+
+```
+@misc{sounack2025bioclinicalmodernbertstateoftheartlongcontext,
+      title={BioClinical ModernBERT: A State-of-the-Art Long-Context Encoder for Biomedical and Clinical NLP}, 
+      author={Thomas Sounack and Joshua Davis and Brigitte Durieux and Antoine Chaffin and Tom J. Pollard and Eric Lehman and Alistair E. W. Johnson and Matthew McDermott and Tristan Naumann and Charlotta Lindvall},
+      year={2025},
+      eprint={2506.10896},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2506.10896}, 
+}
+```
