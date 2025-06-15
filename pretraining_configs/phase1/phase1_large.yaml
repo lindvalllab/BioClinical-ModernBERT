@@ -1,0 +1,158 @@
+data_local: data/All_tokenized_mds
+data_remote: # If blank, files must be present in data_local
+
+max_seq_len: 8192
+tokenizer_name: answerdotai/ModernBERT-large
+mlm_probability: 0.3 # FlexBERT should use 30% masking for optimal performance
+count_padding_tokens: false
+
+# Run Name
+run_name: phase1_large_all_3ep_constant
+
+# Model
+model:
+  name: flex_bert
+  pretrained_model_name: bert-base-uncased # has to be set to bert-base-uncased legacy reasons
+  tokenizer_name: ${tokenizer_name}
+  disable_train_metrics: true # save some time by not computing metrics on the training set
+  model_config:
+    vocab_size: 50368
+    init_method: full_megatron
+    num_hidden_layers: 28
+    hidden_size: 1024
+    intermediate_size: 2624
+    num_attention_heads: 16 # to have head size of 64
+    attention_layer: rope
+    attention_probs_dropout_prob: 0.0
+    attn_out_bias: false
+    attn_out_dropout_prob: 0.1
+    attn_qkv_bias: false
+    bert_layer: prenorm
+    embed_dropout_prob: 0.0
+    embed_norm: true
+    final_norm: true
+    skip_first_prenorm: true
+    embedding_layer: sans_pos
+    loss_function: fa_cross_entropy
+    loss_kwargs:
+      reduction: mean
+    mlp_dropout_prob: 0.0
+    mlp_in_bias: false
+    mlp_layer: glu
+    mlp_out_bias: false
+    normalization: layernorm
+    norm_kwargs:
+      eps: 1e-5
+      bias: false
+    hidden_act: gelu
+    head_pred_act: gelu
+    activation_function: gelu # better safe than sorry
+    padding: unpadded
+    rotary_emb_dim: null
+    rotary_emb_base: 160000.0
+    rotary_emb_scale_base: null
+    rotary_emb_interleaved: false
+    local_attn_rotary_emb_base: 10000.0
+    local_attn_rotary_emb_dim: null
+    allow_embedding_resizing: true
+    sliding_window: 128
+    global_attn_every_n_layers: 3
+    unpad_embeddings: true
+    compile_model: true
+    masked_prediction: true
+
+# Dataloaders
+train_loader:
+  name: text
+  dataset:
+    local: ${data_local}
+    remote: ${data_remote}
+    split: train
+    tokenizer_name: ${tokenizer_name}
+    max_seq_len: ${max_seq_len}
+    shuffle: true
+    mlm_probability: ${mlm_probability}
+    streaming: false
+    shuffle_seed: 2998
+  drop_last: true
+  num_workers: 6
+  sequence_packing: true
+
+eval_loader:
+  name: text
+  dataset:
+    local: ${data_local}
+    remote: ${data_remote}
+    split: eval
+    tokenizer_name: ${tokenizer_name}
+    max_seq_len: ${max_seq_len}
+    shuffle: false
+    mlm_probability: 0.15 # We always evaluate at 15% masking for consistent comparison
+    streaming: false
+  drop_last: false
+  num_workers: 3
+  sequence_packing: false
+
+
+# Optimization
+scheduler:
+  name: constant_with_warmup
+  t_warmup: 0tok
+  t_max: ${max_duration}
+
+optimizer:
+  name: decoupled_stableadamw
+  lr: 5e-5 # Peak learning rate. Note that this is after the pretraining LR reduction
+  betas:
+  - 0.9
+  - 0.98
+  eps: 1.0e-06
+  weight_decay: 1.0e-6 # Amount of weight decay regularization. Note that this is after the pretraining LR reduction
+  filter_bias_norm_wd: true # If True, doesn't apply weight decay to norm layers and biases
+  log_grad_norm: true
+
+max_duration: 160_453_000_000tok ## note: 3x all data
+eval_interval: 3000ba
+global_train_batch_size: 616
+global_eval_batch_size: 616
+
+# System
+seed: 314
+device_eval_microbatch_size: 14
+device_train_microbatch_size: 7
+precision: amp_bf16
+
+# Logging
+progress_bar: false
+log_to_console: true
+console_log_interval: 500ba
+
+callbacks:
+  speed_monitor:
+    window_size: 50
+  lr_monitor: {}
+  scheduled_gc: {}
+  log_grad_norm:
+    batch_log_interval: 10
+  packing_efficiency:
+    log_interval: 10
+
+# W&B logging
+# loggers:
+#   wandb:
+#     project: ## TODO: add your wandb info if needed
+#     entity: ## TODO: add your wandb info if needed
+
+save_interval: 3000ba
+save_num_checkpoints_to_keep: -1  # Important, this cleans up checkpoints saved to DISK
+save_folder: checkpoints/{run_name}
+
+# Load from local filesystem or remote object store to
+# Load from local filesystem or remote object store to
+## note: This is the last checkpoint of the stable phase for ModernBERT. It's the one you will want to use if you perform continued pretraining from the ModernBERT model!
+##        You can find them here: https://huggingface.co/answerdotai/ModernBERT-large-training-checkpoints
+load_path: checkpoints/modernbert-large-context-extension/context-extension/ep0-ba49552-rank0.pt
+
+autoresume: false
+reset_time: true # restarts the scheduler, dataloaders, etc from step zero
+restart_override: true # resets optimizer hyperparameters (LR, WD, etc), LR Scheduler, and training microbatch size from the checkpoint's values
