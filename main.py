@@ -128,7 +128,7 @@ if __name__ == "__main__":
         description="Script to evaluate encoders on downstream tasks."
     )
     parser.add_argument("--dataset", type=str, required=True, help="Name of the downstream task (Phenotype, ChemProt, DEID, COS or SocialHistory). You can implement more tasks in dataloader.py if needed")
-    parser.add_argument("--model", type=str, required=True, help="HF Model to evaluate (e.g. answerdotai/ModernBERT-base). Can be a local path or a HF repo")
+    parser.add_argument("--model", type=str, required=True, help="HF Model to evaluate (e.g. thomas-sounack/BioClinical-ModernBERT-base). Can be a local path or a HF repo")
     parser.add_argument("--lr", type=float, default=2e-5, help="Learning rate for training")
     parser.add_argument("--wd", type=float, default=0.01, help="Weight decay for training")
     parser.add_argument("--epochs", type=int, default=3, help="Number of training epochs")

@@ -24,7 +24,7 @@ The script `main.py` can be used to fine-tune and evaluate encoders on a downstr
 
 ### Arguments:
 * `dataset`: Name of the downstream task (Phenotype, ChemProt, DEID, COS or SocialHistory). You can implement more tasks in `dataloader.py` if needed. **Required**.
-* `model`: HF Model to evaluate (e.g. answerdotai/ModernBERT-base). Can be a local path or a HF repo. **Required**.
+* `model`: HF Model to evaluate (e.g. thomas-sounack/BioClinical-ModernBERT-base). Can be a local path or a HF repo. **Required**.
 * `--lr`: Learning rate for training. Optional, defaults to `2e-5`.
 * `--wd`: Weight decay for training. Optional, defaults to `0.01`.
 * `--epochs`: Number of training epochs. Optional, defaults to `3`.
