@@ -11,6 +11,12 @@ This repository contains:
 
 While this repository does not include the full continued pretraining code (which was run using the [ModernBERT repo](https://github.com/AnswerDotAI/ModernBERT)), it does provide the configuration files needed to replicate the process. If you’re familiar with the ModernBERT codebase, you have everything required to get started right away using our [training checkpoints](https://huggingface.co/thomas-sounack/BioClinical-ModernBERT-checkpoints). For those who prefer a walkthrough, we’ll be releasing a step-by-step guide soon.
 
+## Setup
+
+**⚠️ To reproduce our results, please ensure you run the scripts on a GPU compatible with Flash Attention 2.**
+
+TODO
+
 ## Configuration files
 
 The folder `pretraining_configs` contains the configuration files used during the pretraining of BioClinical ModernBERT.
@@ -18,7 +24,8 @@ The folder `pretraining_configs` contains the configuration files used during th
 - The subfolder `phase1` contains the base and large configuration files for the general phase, where the models are trained on both the biomedical and the clinical data.
 - The subfolder `phase2` contains the base and large configuration files for the specialization phase, where the models are trained on the clinical data only. We also provide the configuration files for Bio ModernBERT as `_phase2_bio_base` and `_phase2_bio_large`, which underperformed in our testing. Please refer to our paper for more details.
 
-## Performance benchmarking
+
+## Performance
 
 The script `main.py` can be used to fine-tune and evaluate encoders on a downstream tasks.
 
@@ -39,6 +46,18 @@ The datasets used in this repo need to be downloaded manually and added to the `
 * `--seed`: Random seed for reproducibility. Optional, defaults to `42`.
 * `--batch_size`: Batch size per device for training and evaluation. Optional, defaults to `16`.
 * `--accumulation_steps`: Gradient accumulation step. Optional, defaults to `1`.
+
+
+##  Inference speed
+
+The script `multiprocess_bench.py` is used to measure the inference speed of each model. It is a modified version of ModernBERT's inference speed script ([https://github.com/AnswerDotAI/ModernBERT/blob/8c57a0f01c12c4953ead53d398a36f81a4ba9e38/efficiency/multiprocess_bench.py
+](original script)), where we add a third dataset size (medium) to compare our model with encoders that have a 4096 token input length.
+
+It can be used with the following command:
+
+```
+python multiprocess_bench.py --model thomas-sounack/BioClinical-ModernBERT-base > BioClinical-ModernBERT-base_inference_times.log 2>&1
+```
 
 
 ## Reference
