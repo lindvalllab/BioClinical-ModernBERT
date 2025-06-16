@@ -22,6 +22,14 @@ The folder `pretraining_configs` contains the configuration files used during th
 
 The script `main.py` can be used to fine-tune and evaluate encoders on a downstream tasks.
 
+### Datasets
+The datasets used in this repo need to be downloaded manually and added to the `data/raw` folder:
+- Phenotype: [Physionet link](https://www.physionet.org/content/phenotype-annotations-mimic/1.20.03/)
+- ChemProt: [BLUE Benchmark github release](https://github.com/ncbi-nlp/BLUE_Benchmark/releases/download/0.1/bert_data.zip)
+- DEID: [Physionet link](https://www.physionet.org/content/deidentifiedmedicaltext/1.0/)
+- COS: [Washington BioNLP link](https://depts.washington.edu/bionlp/data/corpora/files/events-COS-corpus.zip)
+- SocialHistory: [Washington BioNLP link](https://depts.washington.edu/bionlp/data/corpora/files/SocialHistoryMTSamples.zip)
+
 ### Arguments:
 * `dataset`: Name of the downstream task (Phenotype, ChemProt, DEID, COS or SocialHistory). You can implement more tasks in `dataloader.py` if needed. **Required**.
 * `model`: HF Model to evaluate (e.g. thomas-sounack/BioClinical-ModernBERT-base). Can be a local path or a HF repo. **Required**.

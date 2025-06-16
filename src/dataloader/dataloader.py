@@ -377,7 +377,8 @@ class DEID:
 
 class COS:
     def __init__(self):
-        # Problem setup
+        # add cache directory
+        self.cache_dir = os.path.join(f"{PROJECT_ROOT}/data/processed/COS")
         self.problem_type = "token_classification"
         self.id2label = {0: 'B-Attr', 1: 'B-Cos', 2: 'B-Loc', 3: 'B-Ref',
                          4: 'B-Val', 5: 'I-Attr', 6: 'I-Cos', 7: 'I-Loc',
@@ -385,7 +386,7 @@ class COS:
         self.label2id = {label: idx for idx, label in self.id2label.items()}
         self.num_labels = len(self.id2label)
 
-        # Load the dataset
+        # now load (with caching)
         self.dataset = self.load_brat_as_dataset(f"{PROJECT_ROOT}/data/raw/COS")
 
     def process_ann_only(self, ann_path):
@@ -465,7 +466,11 @@ class COS:
         return examples
 
     def load_brat_as_dataset(self, folder):
-        # collect all examples from every .ann file
+        # 1) if cached, load and return
+        if os.path.isdir(self.cache_dir):
+            return DatasetDict.load_from_disk(self.cache_dir)
+
+        # 2) otherwise, build from .ann files as before...
         all_exs = []
         for fn in sorted(os.listdir(folder)):
             if not fn.endswith(".ann"):
@@ -473,7 +478,6 @@ class COS:
             ann_path = os.path.join(folder, fn)
             all_exs.extend(self.process_ann_only(ann_path))
 
-        # build HuggingFace DatasetDict splits
         ds = Dataset.from_list(all_exs)
         split1 = ds.train_test_split(test_size=0.3, seed=42)
         train = split1["train"]
@@ -486,7 +490,7 @@ class COS:
             "test":       test
         })
 
-        # cast ner_tags to ClassLabel
+        # cast ner_tags to ClassLabel as before
         label_list  = [ self.id2label[i] for i in range(self.num_labels) ]
         class_label = ClassLabel(names=label_list)
         features    = Features({
@@ -495,24 +499,39 @@ class COS:
         })
         ds = ds.cast(features)
 
+        # 3) cache to disk
+        os.makedirs(self.cache_dir, exist_ok=True)
+        ds.save_to_disk(self.cache_dir)
+
         return ds
 
 
 class SocialHistory:
     def __init__(self):
+        # add cache directory
         self.cache_dir = os.path.join(f"{PROJECT_ROOT}/data/processed/SocialHistory")
         self.problem_type = "token_classification"
-        self.id2label = {0: 'B-Alcohol', 1: 'B-Amount', 2: 'B-Drug', 3: 'B-EnvironmentalExposure', 4: 'B-ExposureHistory', 5: 'B-Extent',
-                         6: 'B-Family', 7: 'B-Frequency', 8: 'B-History', 9: 'B-InfectiousDiseases', 10: 'B-LivingStatus', 11: 'B-Location',
-                         12: 'B-MaritalStatus', 13: 'B-MedicalCondition', 14: 'B-Method', 15: 'B-Occupation', 16: 'B-Other', 17: 'B-PhysicalActivity',
-                         18: 'B-QuitHistory', 19: 'B-Residence', 20: 'B-SexualHistory', 21: 'B-Status', 22: 'B-Temporal', 23: 'B-Tobacco',
-                         24: 'B-Type', 25: 'I-Alcohol', 26: 'I-Amount', 27: 'I-Drug', 28: 'I-EnvironmentalExposure', 29: 'I-ExposureHistory',
-                         30: 'I-Extent', 31: 'I-Family', 32: 'I-Frequency', 33: 'I-History', 34: 'I-InfectiousDiseases', 35: 'I-LivingSituation',
-                         36: 'I-LivingStatus', 37: 'I-Location', 38: 'I-MaritalStatus', 39: 'I-MedicalCondition', 40: 'I-Method', 41: 'I-Occupation',
-                         42: 'I-Other', 43: 'I-QuitHistory', 44: 'I-Residence', 45: 'I-SexualHistory', 46: 'I-Status', 47: 'I-Temporal', 48: 'I-Tobacco',
-                         49: 'I-Type', 50: 'O'}
+        self.id2label = {
+            0: 'B-Alcohol', 1: 'B-Amount', 2: 'B-Drug', 3: 'B-EnvironmentalExposure',
+            4: 'B-ExposureHistory', 5: 'B-Extent', 6: 'B-Family', 7: 'B-Frequency',
+            8: 'B-History', 9: 'B-InfectiousDiseases', 10: 'B-LivingStatus',
+            11: 'B-Location', 12: 'B-MaritalStatus', 13: 'B-MedicalCondition',
+            14: 'B-Method', 15: 'B-Occupation', 16: 'B-Other', 17: 'B-PhysicalActivity',
+            18: 'B-QuitHistory', 19: 'B-Residence', 20: 'B-SexualHistory',
+            21: 'B-Status', 22: 'B-Temporal', 23: 'B-Tobacco', 24: 'B-Type',
+            25: 'I-Alcohol', 26: 'I-Amount', 27: 'I-Drug', 28: 'I-EnvironmentalExposure',
+            29: 'I-ExposureHistory', 30: 'I-Extent', 31: 'I-Family', 32: 'I-Frequency',
+            33: 'I-History', 34: 'I-InfectiousDiseases', 35: 'I-LivingSituation',
+            36: 'I-LivingStatus', 37: 'I-Location', 38: 'I-MaritalStatus',
+            39: 'I-MedicalCondition', 40: 'I-Method', 41: 'I-Occupation',
+            42: 'I-Other', 43: 'I-QuitHistory', 44: 'I-Residence',
+            45: 'I-SexualHistory', 46: 'I-Status', 47: 'I-Temporal',
+            48: 'I-Tobacco', 49: 'I-Type', 50: 'O'
+        }
         self.label2id = {label: idx for idx, label in self.id2label.items()}
         self.num_labels = len(self.id2label)
+
+        # load with caching
         self.dataset = self.load_brat_as_dataset(f"{PROJECT_ROOT}/data/raw/SocialHistory")
 
     def parse_ann_file(self, ann_path):
@@ -565,19 +584,22 @@ class SocialHistory:
         return {"tokens": token_strs, "ner_tags": labels}
 
     def load_brat_as_dataset(self, folder):
-        # collect all examples
+        # 1) if cached, load and return
+        if os.path.isdir(self.cache_dir):
+            return DatasetDict.load_from_disk(self.cache_dir)
+
+        # 2) otherwise, build from .txt/.ann pairs as before...
         examples = []
         for fn in sorted(os.listdir(folder)):
             if not fn.endswith(".txt"):
                 continue
             base = fn[:-4]
-            txt, ann = os.path.join(folder, fn), os.path.join(folder, base+".ann")
+            txt, ann = os.path.join(folder, fn), os.path.join(folder, base + ".ann")
             if not os.path.exists(ann):
                 print(f"Missing .ann for {fn}, skipping.")
                 continue
             examples.append(self.process_pair(txt, ann))
 
-        # turn into a Dataset and split
         ds = Dataset.from_list(examples)
         split1 = ds.train_test_split(test_size=0.3, seed=42)
         train = split1["train"]
@@ -585,17 +607,21 @@ class SocialHistory:
         eval_ = rest["train"]
         test  = rest["test"]
         ds = DatasetDict({
-            "train": train,
+            "train":      train,
             "validation": eval_,
-            "test": test
+            "test":       test
         })
+
         label_list = [ self.id2label[i] for i in range(self.num_labels) ]
         class_label = ClassLabel(names=label_list)
-
         features = Features({
-            "tokens": Sequence(feature=Value("string")),
+            "tokens":   Sequence(feature=Value("string")),
             "ner_tags": Sequence(feature=class_label),
         })
-
         ds = ds.cast(features)
+
+        # 3) cache to disk
+        os.makedirs(self.cache_dir, exist_ok=True)
+        ds.save_to_disk(self.cache_dir)
+
         return ds
