@@ -2,7 +2,7 @@
 # run_parallel.sh
 # This script launches multiple training runs in parallel with different seeds.
 # Usage example:
-# ./run_parallel.sh --dataset HOC --model answerdotai/ModernBERT-base --lr 2e-5 --wd 0.01 --epochs 3 --batch_size 16 --accumulation_steps 1
+# ./run_parallel.sh --dataset Phenotype --model thomas-sounack/BioClinical-ModernBERT-base --lr 2e-5 --wd 0.01 --epochs 3 --batch_size 16 --accumulation_steps 1
 
 # Get the directory where this script is located
 SCRIPT_DIR=$(dirname "$0")
@@ -10,7 +10,6 @@ SCRIPT_DIR=$(dirname "$0")
 PROJECT_ROOT=$(realpath "$SCRIPT_DIR/..")
 
 source $(conda info --base)/etc/profile.d/conda.sh
-# conda activate bio_clinical_mbert
 conda activate bert24
 
 # Default list of seeds

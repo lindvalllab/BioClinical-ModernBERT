@@ -42,14 +42,21 @@ The datasets used in this repo need to be downloaded manually and added to the `
 - SocialHistory: [Washington BioNLP link](https://depts.washington.edu/bionlp/data/corpora/files/SocialHistoryMTSamples.zip)
 
 ### Arguments:
-* `dataset`: Name of the downstream task (Phenotype, ChemProt, DEID, COS or SocialHistory). You can implement more tasks in `dataloader.py` if needed. **Required**.
-* `model`: HF Model to evaluate (e.g. thomas-sounack/BioClinical-ModernBERT-base). Can be a local path or a HF repo. **Required**.
+* `--dataset`: Name of the downstream task (Phenotype, ChemProt, DEID, COS or SocialHistory). You can implement more tasks in `dataloader.py` if needed. **Required**.
+* `--model`: HF Model to evaluate (e.g. thomas-sounack/BioClinical-ModernBERT-base). Can be a local path or a HF repo. **Required**.
 * `--lr`: Learning rate for training. Optional, defaults to `2e-5`.
 * `--wd`: Weight decay for training. Optional, defaults to `0.01`.
 * `--epochs`: Number of training epochs. Optional, defaults to `3`.
 * `--seed`: Random seed for reproducibility. Optional, defaults to `42`.
 * `--batch_size`: Batch size per device for training and evaluation. Optional, defaults to `16`.
 * `--accumulation_steps`: Gradient accumulation step. Optional, defaults to `1`.
+
+For example:
+```
+python main.py --dataset Phenotype --model thomas-sounack/BioClinical-ModernBERT-base --lr 2e-5 --wd 0.01 --epochs 3 --seed 42 --batch_size 16 --accumulation_steps 1
+```
+
+For your convenience, we also provide the bash script `scripts/run_parallel.sh`. It can be called with the same hyperparameters as main.py. If a seed is provided, it is equivalent to main.py. Otherwise, it launches multiple training runs in parallel with different seeds, according to the list `seeds` in that script.
 
 
 ##  Inference speed
