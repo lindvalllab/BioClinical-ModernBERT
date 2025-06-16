@@ -65,7 +65,7 @@ The notebook `notebooks/downstream_results_exploration.ipynb` can be used to com
 
 ##  Inference speed
 
-The script `multiprocess_bench.py` is used to measure the inference speed of each model. It is a modified version of ModernBERT's inference speed script ([original script](https://github.com/AnswerDotAI/ModernBERT/blob/8c57a0f01c12c4953ead53d398a36f81a4ba9e38/efficiency/multiprocess_bench.py)), where we add a third dataset size (medium) to compare our model with encoders that have a 4096 token input length.
+The script `multiprocess_bench.py` is used to measure the inference speed of each model. It is a modified version of ModernBERT's inference speed script ([see original](https://github.com/AnswerDotAI/ModernBERT/blob/8c57a0f01c12c4953ead53d398a36f81a4ba9e38/efficiency/multiprocess_bench.py)), where we add a third dataset size (medium) to compare our model with encoders that have a 4096 token input length.
 
 It can be used with the following command:
 
