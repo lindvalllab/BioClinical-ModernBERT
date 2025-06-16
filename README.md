@@ -58,6 +58,10 @@ python main.py --dataset Phenotype --model thomas-sounack/BioClinical-ModernBERT
 
 For your convenience, we also provide the bash script `scripts/run_parallel.sh`. It can be called with the same hyperparameters as main.py. If a seed is provided, it is equivalent to main.py. Otherwise, it launches multiple training runs in parallel with different seeds, according to the list `seeds` in that script.
 
+### Results exploration
+
+The notebook `notebooks/downstream_results_exploration.ipynb` can be used to compare the fine-tuned models.
+
 
 ##  Inference speed
 
