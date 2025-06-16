@@ -24,7 +24,7 @@ The script `main.py` can be used to fine-tune and evaluate encoders on a downstr
 
 ### Datasets
 The datasets used in this repo need to be downloaded manually and added to the `data/raw` folder:
-- Phenotype: [Physionet link](https://www.physionet.org/content/phenotype-annotations-mimic/1.20.03/)
+- Phenotype: [Physionet link](https://www.physionet.org/content/phenotype-annotations-mimic/1.20.03/). Note that this dataset also requires [MIMIC III](https://physionet.org/content/mimiciii/1.4/)'s NOTEEVENTS csv. 
 - ChemProt: [BLUE Benchmark github release](https://github.com/ncbi-nlp/BLUE_Benchmark/releases/download/0.1/bert_data.zip)
 - DEID: [Physionet link](https://www.physionet.org/content/deidentifiedmedicaltext/1.0/)
 - COS: [Washington BioNLP link](https://depts.washington.edu/bionlp/data/corpora/files/events-COS-corpus.zip)
