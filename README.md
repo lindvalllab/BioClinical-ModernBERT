@@ -17,9 +17,24 @@ While this repository does not include the full continued pretraining code (whic
 
 ## Setup
 
-**⚠️ To reproduce our results, please ensure you run the scripts on a GPU compatible with Flash Attention 2.**
+The environment for this repository can be installed on a GPU-equipped machine with the following commands:
+```bash
+conda env create -f environment.yaml
+# if the conda environment errors out set channel priority to flexible:
+# conda config --set channel_priority flexible
+conda activate BioClinicalModernBERT
+# if using H100s clone and build flash attention 3
+# git clone https://github.com/Dao-AILab/flash-attention.git
+# cd flash-attention/hopper
+# python setup.py install
+# install flash attention 2 (model uses FA3+FA2 or just FA2 if FA3 isn't supported)
+pip install "flash_attn==2.6.3" --no-build-isolation
+# or download a precompiled wheel from https://github.com/Dao-AILab/flash-attention/releases/tag/v2.6.3
+# or limit the number of parallel compilation jobs
+# MAX_JOBS=8 pip install "flash_attn==2.6.3" --no-build-isolation
+```
 
-TODO
+**⚠️ Flash Attention is required to fully leverage the efficiency gains of the ModernBERT architecture.**
 
 ## Pretraining configuration files
 

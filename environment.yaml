@@ -1,10 +1,11 @@
-name: bert24
+# Adapted from the ModernBERT repo (https://github.com/AnswerDotAI/ModernBERT/blob/8c57a0f01c12c4953ead53d398a36f81a4ba9e38/environment.yaml)
+name: BioClinicalModernBERT
 channels:
   - pytorch
+  - defaults
   - huggingface
   - nvidia
   - conda-forge
-  - defaults
 dependencies:
   - _libgcc_mutex=0.1
   - _openmp_mutex=4.5
@@ -136,7 +137,6 @@ dependencies:
   - docker-pycreds=0.4.0
   - double-conversion=3.3.0
   - einops=0.8.0
-  - evaluate=0.4.1
   - exceptiongroup=1.2.2
   - execnet=2.1.1
   - expat=2.6.2
@@ -355,6 +355,7 @@ dependencies:
   - oci=2.132.0
   - ocl-icd=2.3.2
   - omegaconf=2.3.0
+  - opencl-headers=2025.06.13
   - openh264=2.4.1
   - openjpeg=2.5.2
   - openssl=3.3.1
@@ -371,7 +372,6 @@ dependencies:
   - platformdirs=4.2.2
   - pluggy=1.5.0
   - portalocker=2.10.1
-  - prompt-toolkit=3.0.36
   - prompt_toolkit=3.0.36
   - proto-plus=1.23.0
   - protobuf=4.25.3
@@ -397,7 +397,7 @@ dependencies:
   - pytest=8.3.2
   - pytest-xdist=3.6.1
   - python=3.11.9
-  - python-dateutil=2.9.0
+  - python-dateutil=2.9.0.post0
   - python-slugify=8.0.4
   - python-snappy=0.7.2
   - python-tzdata=2024.1
@@ -419,7 +419,7 @@ dependencies:
   - requests=2.32.3
   - responses=0.18.0
   - rich=13.7.1
-  - rsa=4.9
+  - rsa=4.9.1
   - s2n=1.5.1
   - s3transfer=0.10.2
   - safetensors=0.4.4
@@ -439,7 +439,6 @@ dependencies:
   - termcolor=2.4.0
   - text-unidecode=1.3
   - tk=8.6.13
-  - tokenizers=0.19.1
   - tomli=2.0.1
   - torch-optimizer=0.3.0
   - torchaudio=2.4.0
@@ -448,7 +447,6 @@ dependencies:
   - torchvision=0.19.0
   - tornado=6.4.1
   - tqdm=4.66.5
-  - transformers=4.44.1
   - typer=0.12.4
   - typer-slim=0.12.4
   - typer-slim-standard=0.12.4
@@ -504,11 +502,102 @@ dependencies:
   - zlib=1.3.1
   - zstandard=0.23.0
   - pip:
+      - absl-py==2.3.0
+      - accelerate==1.7.0
+      - argon2-cffi==25.1.0
+      - argon2-cffi-bindings==21.2.0
+      - asttokens==3.0.0
+      - async-lru==2.0.5
+      - babel==2.17.0
+      - beautifulsoup4==4.13.4
+      - bleach==6.2.0
+      - catalogue==2.0.10
+      - comm==0.2.2
+      - debugpy==1.8.14
+      - decorator==5.2.1
+      - defusedxml==0.7.1
+      - evaluate==0.4.3
+      - executing==2.2.0
+      - fastjsonschema==2.21.1
+      - fqdn==1.5.1
+      - h11==0.16.0
+      - hf-xet==1.1.3
+      - httpcore==1.0.9
+      - httpx==0.28.1
+      - huggingface-hub==0.33.0
+      - ipykernel==6.29.5
+      - ipython==9.3.0
+      - ipython-pygments-lexers==1.1.1
+      - ipywidgets==8.1.7
+      - isoduration==20.11.0
+      - jedi==0.19.2
+      - joblib==1.5.1
+      - json5==0.12.0
+      - jsonpointer==3.0.0
+      - jsonschema==4.24.0
+      - jsonschema-specifications==2025.4.1
+      - jupyter==1.1.1
+      - jupyter-client==8.6.3
+      - jupyter-console==6.6.3
+      - jupyter-core==5.8.1
+      - jupyter-events==0.12.0
+      - jupyter-lsp==2.2.5
+      - jupyter-server==2.16.0
+      - jupyter-server-terminals==0.5.3
+      - jupyterlab==4.4.3
+      - jupyterlab-pygments==0.3.0
+      - jupyterlab-server==2.27.3
+      - jupyterlab-widgets==3.0.15
+      - markdown==3.8
+      - matplotlib-inline==0.1.7
+      - mistune==3.1.3
       - mosaicml==0.24.1
       - mosaicml-cli==0.6.41
       - mosaicml-streaming==0.8.0
+      - nbclient==0.10.2
+      - nbconvert==7.16.6
+      - nbformat==5.10.4
+      - nest-asyncio==1.6.0
       - ninja==1.11.1.1
+      - notebook==7.4.3
+      - notebook-shim==0.2.4
+      - overrides==7.7.0
+      - pandocfilters==1.5.1
+      - parso==0.8.4
+      - pexpect==4.9.0
+      - prometheus-client==0.22.1
+      - prompt-toolkit==3.0.51
+      - ptyprocess==0.7.0
+      - pure-eval==0.2.3
+      - python-json-logger==3.3.0
+      - pyzmq==27.0.0
+      - referencing==0.36.2
+      - rfc3339-validator==0.1.4
+      - rfc3986-validator==0.1.1
+      - rpds-py==0.25.1
       - ruamel-yaml==0.18.6
       - ruamel-yaml-clib==0.2.8
+      - scikit-learn==1.7.0
+      - scipy==1.15.3
+      - send2trash==1.8.3
+      - seqeval==1.2.2
+      - soupsieve==2.7
+      - srsly==2.5.1
+      - stack-data==0.6.3
+      - tensorboard==2.19.0
+      - tensorboard-data-server==0.7.2
+      - terminado==0.18.1
+      - threadpoolctl==3.6.0
+      - tinycss2==1.4.0
+      - tokenizers==0.21.1
       - torch-optimi==0.2.1
+      - traitlets==5.14.3
+      - transformers==4.52.4
+      - uri-template==1.3.0
+      - webcolors==24.11.1
+      - webencodings==0.5.1
+      - websocket-client==1.8.0
+      - werkzeug==3.1.3
+      - widgetsnbextension==4.0.14
       - zstd==1.5.5.1
+prefix: /home/Thoma/miniforge3/envs/BioClinicalModernBERT
