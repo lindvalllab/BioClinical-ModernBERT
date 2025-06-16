@@ -4,6 +4,14 @@ Repository for [BioClinical ModernBERT: A State-of-the-Art Long-Context Encoder 
 
 **This is the research repository for BioClinical ModernBERT. If you are looking to use our models, please refer to our [🤗 Collection](https://huggingface.co/collections/thomas-sounack/bioclinical-modernbert-681b824d12b9b6899841f8c7).**
 
+
+## Table of Contents
+1. [Setup](#setup)
+2. [Pretraining configuration files](#pretraining-configuration-files)
+3. [Performance benchmarking code](#performance)
+4. [Inference speed benchmarking code](#inference-speed)
+5. [Reference](#reference)
+
 This repository contains:
 - The configuration files used to train the family of BioClinical ModernBERT models
 - The performance benchmarking code
@@ -11,13 +19,14 @@ This repository contains:
 
 While this repository does not include the full continued pretraining code (which was run using the [ModernBERT repo](https://github.com/AnswerDotAI/ModernBERT)), it does provide the configuration files needed to replicate the process. If you’re familiar with the ModernBERT codebase, you have everything required to get started right away using our [training checkpoints](https://huggingface.co/thomas-sounack/BioClinical-ModernBERT-checkpoints). For those who prefer a walkthrough, we’ll be releasing a step-by-step guide soon.
 
+
 ## Setup
 
 **⚠️ To reproduce our results, please ensure you run the scripts on a GPU compatible with Flash Attention 2.**
 
 TODO
 
-## Configuration files
+## Pretraining configuration files
 
 The folder `pretraining_configs` contains the configuration files used during the pretraining of BioClinical ModernBERT.
 
