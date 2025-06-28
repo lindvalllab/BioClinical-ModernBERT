@@ -38,11 +38,15 @@ pip install "flash_attn==2.6.3" --no-build-isolation
 
 ## Pretraining resources
 
-The folder `pretraining_resources` contains several resources used for the continued pretraining of BioClinical ModernBERT:
+The folder `pretraining_resources` contains several resources used for the continued pretraining of BioClinical ModernBERT.
+
+### MDS dataset conversion
+
+The script `convert_dataset_to_mds.py` can be used to convert csv files to MDS datasets. It contains instructions on how to use it.
 
 ### Configuration files
 
-`configs` contains the configuration files used during the pretraining of BioClinical ModernBERT.
+`pretraining_resources/configs` contains the configuration files used during the pretraining of BioClinical ModernBERT.
 
 - The subfolder `phase1` contains the base and large configuration files for the general phase, where the models are trained on both the biomedical and the clinical data.
 - The subfolder `phase2` contains the base and large configuration files for the specialization phase, where the models are trained on the clinical data only. We also provide the configuration files for Bio ModernBERT as `_phase2_bio_base` and `_phase2_bio_large`, which underperformed in our testing. Please refer to our paper for more details.
