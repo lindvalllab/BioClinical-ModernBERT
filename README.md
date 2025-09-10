@@ -12,7 +12,9 @@ Repository for [BioClinical ModernBERT: A State-of-the-Art Long-Context Encoder 
 4. [Inference speed benchmarking code](#inference-speed)
 5. [Reference](#reference)
 
-While this repository does not include the full continued pretraining code (which was run using the [ModernBERT repo](https://github.com/AnswerDotAI/ModernBERT)), it does provide the configuration files needed to replicate the process. If you’re familiar with the ModernBERT codebase, you have everything required to get started right away using our [training checkpoints](https://huggingface.co/thomas-sounack/BioClinical-ModernBERT-checkpoints). For those who prefer a walkthrough, we’ll be releasing a step-by-step guide soon.
+While this repository does not include the full continued pretraining code (which was run using the [ModernBERT repo](https://github.com/AnswerDotAI/ModernBERT)), it does provide the configuration files needed to replicate the process. If you’re familiar with the ModernBERT codebase, you have everything required to get started right away using our [training checkpoints](https://huggingface.co/thomas-sounack/BioClinical-ModernBERT-checkpoints). 
+
+**A step-by-step guide for reproducing our model training with your own data is available [here](https://huggingface.co/blog/thomas-sounack/bioclinical-modernbert-tutorial)!**
 
 
 ## Setup
